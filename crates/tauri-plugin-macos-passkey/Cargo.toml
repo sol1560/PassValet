@@ -1,6 +1,19 @@
 [package]
 name = "tauri-plugin-macos-passkey"
 version.workspace = true
-edition.workspace = true
+edition = "2021"
+description = "macOS native passkey (with PRF) and Touch ID bridge for Tauri. Vendored from yminghua/tauri-plugin-macos-passkey (MIT/Apache-2.0) with LocalAuthentication additions."
+license = "MIT OR Apache-2.0"
+links = "tauri-plugin-macos-passkey"
 
 [dependencies]
+serde = { workspace = true }
+tokio = { workspace = true }
+tauri = { version = "2", features = [] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+swift-rs = "1.0.7"
+
+[build-dependencies]
+swift-rs = { version = "1.0.7", features = ["build"] }
+tauri-plugin = { version = "2", features = ["build"] }
