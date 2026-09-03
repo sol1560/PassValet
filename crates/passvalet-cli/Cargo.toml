@@ -2,9 +2,25 @@
 name = "passvalet-cli"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+description = "PassValet CLI, MCP server and Chrome native-messaging host"
 
 [[bin]]
 name = "passvalet"
 path = "src/main.rs"
 
 [dependencies]
+passvalet-core.workspace = true
+passvalet-ipc.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap.workspace = true
+rmcp.workspace = true
+schemars.workspace = true
+directories.workspace = true
+chrono.workspace = true
+regex.workspace = true
