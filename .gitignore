@@ -26,3 +26,6 @@ DerivedData
 
 # OS
 .DS_Store
+
+# build artifacts
+apps/desktop/src-tauri/binaries/
