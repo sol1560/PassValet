@@ -1,0 +1,20 @@
+service = "anthropic"
+label = "Anthropic"
+start_url = "https://console.anthropic.com/settings/keys"
+login_url = "https://console.anthropic.com/login"
+key_types = ["api_key"]
+max_steps = 35
+
+[collect]
+instructions = """
+Anthropic console:
+- API keys: https://console.anthropic.com/settings/keys. Existing keys cannot be revealed again.
+- Click "Create Key", name it "passvalet", pick the default workspace, create. The dialog shows the key (sk-ant-…) once: click Copy and call capture_secret with source="clipboard" (or capture the element) before closing.
+"""
+
+[rotate]
+supported = true
+max_steps = 40
+instructions = """
+Create a new key as in collection, capture it, then locate the old key (name or last characters in hints) and choose "Delete"/"Disable" from its row menu. Never remove the new key.
+"""

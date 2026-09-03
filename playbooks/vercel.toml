@@ -1,0 +1,20 @@
+service = "vercel"
+label = "Vercel"
+start_url = "https://vercel.com/account/settings/tokens"
+login_url = "https://vercel.com/login"
+key_types = ["token"]
+max_steps = 35
+
+[collect]
+instructions = """
+Vercel:
+- Account Settings → Tokens: https://vercel.com/account/settings/tokens. Tokens cannot be revealed after creation.
+- In "Create Token": name "passvalet", Scope = the user's personal account (or the team from hints), Expiration = 90 days (or "No Expiration" if offered and hints allow). Click Create. The token appears once in a dialog — click Copy and call capture_secret with source="clipboard" (or capture the element) before closing.
+"""
+
+[rotate]
+supported = true
+max_steps = 40
+instructions = """
+Create a new token as in collection, capture it, then delete the old token (name "passvalet" or matching hints) with its Delete button. Never delete the new token.
+"""

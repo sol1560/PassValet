@@ -1,0 +1,24 @@
+service = "stripe"
+label = "Stripe"
+start_url = "https://dashboard.stripe.com/test/apikeys"
+login_url = "https://dashboard.stripe.com/login"
+key_types = ["publishable_key", "secret_key", "webhook_secret"]
+max_steps = 45
+
+[collect]
+instructions = """
+Stripe dashboard:
+- Developers → API keys. Test mode URL: https://dashboard.stripe.com/test/apikeys ; live mode: https://dashboard.stripe.com/apikeys. Default to TEST mode unless the user hints say live. The mode toggle is a "Test mode" switch in the header.
+- Publishable key (pk_test_/pk_live_) is shown in full; capture_secret on its element or click its copy button and use source="clipboard".
+- Secret key (sk_test_/sk_live_): Stripe shows the secret key only ONCE when created, otherwise it is hidden. If a "Reveal test key" / "Reveal live key" button exists, click it and capture the revealed value. If it cannot be revealed, create a restricted or standard key: "Create secret key" (or "+ Create restricted key" → give it the name "passvalet" and enable the permissions needed), then capture the value in the confirmation dialog BEFORE closing it.
+- Webhook signing secret (whsec_): Developers → Webhooks → open the endpoint → "Signing secret" → click Reveal → capture. If no endpoint exists, skip webhook_secret and mention it in done.
+- Do not change account, payout, or business settings.
+"""
+
+[rotate]
+supported = true
+max_steps = 50
+key_types = ["secret_key"]
+instructions = """
+Rotation on Stripe: on API keys, the secret key row has a ⋯ menu → "Roll key…" (or "Rotate"). Choose to expire the old key "now" (or the shortest option), confirm, and capture the NEW key shown in the dialog before closing. If instead the old key is a restricted key, create a new restricted key with the same permissions, capture it, then delete the old one.
+"""

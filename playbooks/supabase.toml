@@ -1,0 +1,28 @@
+service = "supabase"
+label = "Supabase"
+start_url = "https://supabase.com/dashboard/projects"
+login_url = "https://supabase.com/dashboard/sign-in"
+key_types = ["url", "anon_key", "service_role_key"]
+max_steps = 45
+
+[collect]
+instructions = """
+Supabase dashboard layout:
+- /dashboard/projects lists organizations and projects. If there is exactly one project, open it. If several, and the user hints do not say which, call need_user asking which project to use (mention the project names you see).
+- Inside a project the URL is /dashboard/project/<ref>. Keys live under Project Settings → "API Keys" (newer UI: Settings → API Keys, tabs "Publishable and secret keys" and "Legacy anon, service_role"). Direct URL: https://supabase.com/dashboard/project/<ref>/settings/api-keys (legacy: /settings/api).
+- Project URL: on the same settings page there is a "Project URL" field like https://<ref>.supabase.co; capture it with key_type "url". If no such field is visible you may derive it from the project ref in the address bar and capture from the input field showing it.
+- anon_key: the "anon" / "public" / "publishable" key. Newer projects show `sb_publishable_…`; legacy shows a JWT starting with eyJ. Either is fine.
+- service_role_key: the "service_role" / "secret" key. Newer projects: `sb_secret_…` (must be created if none exists: click "Create new API key", name it "passvalet", copy it once). Legacy: JWT hidden behind a "Reveal" button — click Reveal, then capture_secret on the revealed text element. If both new and legacy exist, prefer the new secret key.
+- Copy buttons work: click the Copy icon next to a key then call capture_secret with source="clipboard".
+- Do not enable/disable keys, do not touch JWT settings.
+"""
+
+[rotate]
+supported = true
+max_steps = 50
+key_types = ["service_role_key", "anon_key"]
+instructions = """
+Rotation on Supabase:
+- New-style keys (sb_secret_/sb_publishable_): on Settings → API Keys, create a NEW secret key named "passvalet-<date>", capture it, then find the OLD key (the one whose preview matches the fingerprint in the user hints) and delete/revoke it via its ⋯ menu. Never delete the key you just created.
+- Legacy JWT keys can only be rotated by rotating the JWT secret, which invalidates ALL keys and logs out users. Do NOT do that automatically: call fail with reason "legacy JWT rotation affects all keys; requires manual action".
+"""

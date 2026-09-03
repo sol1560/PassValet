@@ -1,0 +1,21 @@
+service = "openai"
+label = "OpenAI"
+start_url = "https://platform.openai.com/api-keys"
+login_url = "https://platform.openai.com/login"
+key_types = ["api_key"]
+max_steps = 35
+
+[collect]
+instructions = """
+OpenAI platform:
+- API keys page: https://platform.openai.com/api-keys (or Settings → API keys, or per-project: /settings/organization/api-keys). Existing keys cannot be revealed again.
+- Create a new key: click "Create new secret key", name it "passvalet", keep default project/permissions ("All"), click "Create secret key". The dialog shows the key once (starts with sk-proj- or sk-). Click its Copy button and call capture_secret with source="clipboard" (or capture_secret on the element showing the key) BEFORE clicking Done.
+- If an organization/project chooser appears and hints do not say which, pick the default one.
+"""
+
+[rotate]
+supported = true
+max_steps = 40
+instructions = """
+Rotation on OpenAI: create a new key as in collection, capture it, then find the old key in the list (match by name "passvalet" or by the last 4 characters given in hints) and use its trash/Revoke action, confirm. Do not revoke keys you did not identify as the old one.
+"""

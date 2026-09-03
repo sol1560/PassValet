@@ -1,0 +1,20 @@
+service = "github"
+label = "GitHub"
+start_url = "https://github.com/settings/tokens?type=beta"
+login_url = "https://github.com/login"
+key_types = ["personal_access_token"]
+max_steps = 45
+
+[collect]
+instructions = """
+GitHub personal access tokens:
+- Fine-grained tokens: https://github.com/settings/personal-access-tokens (Settings → Developer settings → Personal access tokens → Fine-grained tokens). Click "Generate new token". Name "passvalet", expiration 90 days, Repository access = "All repositories" unless hints specify repos, Permissions: Contents Read and write, Metadata Read, Pull requests Read and write, Actions Read. Click "Generate token". GitHub may ask for the password/2FA — call need_user if so. The token (github_pat_…) is shown once: click the copy icon and call capture_secret with source="clipboard" (or capture the element).
+- If fine-grained tokens are disabled for the org, fall back to classic: https://github.com/settings/tokens/new with scopes repo, workflow, read:org; token starts with ghp_.
+"""
+
+[rotate]
+supported = true
+max_steps = 45
+instructions = """
+Open the old token (name "passvalet" or matching hints) and use "Regenerate token" if present; capture the new value shown once. Otherwise generate a new token as in collection, capture it, then delete the old token. Never delete the new one.
+"""

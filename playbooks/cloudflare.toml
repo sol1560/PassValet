@@ -1,0 +1,21 @@
+service = "cloudflare"
+label = "Cloudflare"
+start_url = "https://dash.cloudflare.com/profile/api-tokens"
+login_url = "https://dash.cloudflare.com/login"
+key_types = ["api_token", "account_id"]
+max_steps = 45
+
+[collect]
+instructions = """
+Cloudflare dashboard:
+- API tokens: https://dash.cloudflare.com/profile/api-tokens. Click "Create Token". Prefer the template "Edit Cloudflare Workers" (covers Workers, KV, D1, Pages for the account); if the user hints name a different template use that. Keep defaults for account/zone resources (all accounts / all zones is acceptable), click "Continue to summary", then "Create Token". The token is shown once — click Copy and call capture_secret with source="clipboard" (or capture the element). Do NOT use the "Global API Key".
+- account_id: open https://dash.cloudflare.com/ → pick the account (first one if a single account) → on the account home / Workers & Pages overview the right sidebar shows "Account ID" (32 hex chars) with a copy button; capture it with key_type "account_id" (it is not secret). If hard to find, the account id is also the first path segment in URLs like https://dash.cloudflare.com/<account_id>/... — capture from the address bar via read_page of the URL is not possible, so use the sidebar field.
+"""
+
+[rotate]
+supported = true
+max_steps = 45
+key_types = ["api_token"]
+instructions = """
+On API Tokens, the old token row has a ⋯ menu with "Roll" — click it, confirm, and capture the NEW value shown once. If Roll is unavailable, create a new token with the same template and delete the old one afterwards.
+"""
