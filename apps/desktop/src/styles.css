@@ -34,6 +34,7 @@ button {
   border-radius: 8px;
   padding: 7px 12px;
   cursor: pointer;
+  white-space: nowrap;
 }
 button:hover { border-color: #3a4152; }
 button:disabled { opacity: 0.5; cursor: default; }
