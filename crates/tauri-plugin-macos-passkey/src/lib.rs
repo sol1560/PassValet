@@ -101,7 +101,7 @@ pub async fn touch_id(reason: &str, allow_password: bool) -> Result<bool, Passke
     }
 }
 
-pub fn biometrics_available() -> bool {
+pub fn is_biometrics_available() -> bool {
     #[cfg(target_os = "macos")]
     {
         macos::biometrics_available()
@@ -146,8 +146,8 @@ async fn touch_id_authenticate(reason: String, allow_password: Option<bool>) -> 
 }
 
 #[tauri::command]
-fn biometrics_available_cmd() -> bool {
-    biometrics_available()
+fn biometrics_available() -> bool {
+    is_biometrics_available()
 }
 
 pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
@@ -156,7 +156,7 @@ pub fn init<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
             register_passkey,
             login_passkey,
             touch_id_authenticate,
-            biometrics_available_cmd
+            biometrics_available
         ])
         .build()
 }
