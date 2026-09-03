@@ -22,6 +22,7 @@ interface RunSession {
   lastRows: ReturnType<typeof buildTree>["rows"];
   attached: Set<number>;
   aborted: boolean;
+  dialogs: string[];
 }
 
 const CLIPBOARD_HOOK = `(() => {
@@ -59,6 +60,18 @@ export class Executor {
           if (s.tabIds.length === 0) s.aborted = true;
         }
       }
+    });
+    // JS dialogs (alert/confirm/prompt) block the page: accept them and tell the model.
+    chrome.debugger.onEvent.addListener((source, method, params: any) => {
+      if (method !== "Page.javascriptDialogOpening" || source.tabId === undefined) return;
+      const tabId = source.tabId;
+      console.log("[passvalet] dialog on tab", tabId, params?.type, params?.message);
+      for (const s of this.sessions.values()) {
+        if (s.attached.has(tabId)) {
+          s.dialogs.push(`${params?.type ?? "dialog"}: ${String(params?.message ?? "").slice(0, 300)}`);
+        }
+      }
+      chrome.debugger.sendCommand({ tabId }, "Page.handleJavaScriptDialog", { accept: true, promptText: params?.defaultPrompt ?? "" }, () => void chrome.runtime.lastError);
     });
     chrome.debugger.onDetach.addListener((source, reason) => {
       if (source.tabId === undefined) return;
@@ -104,6 +117,7 @@ export class Executor {
       lastRows: [],
       attached: new Set(),
       aborted: false,
+      dialogs: [],
     };
     this.sessions.set(runId, s);
     await this.attach(s, tab.id);
@@ -213,6 +227,10 @@ export class Executor {
     await this.attach(s, tabId);
     const out = await this.dispatch(s, tabId, tool, params);
     if (!out.browser_state && tool !== "screenshot") out.browser_state = await this.state(tabId);
+    if (s.dialogs.length) {
+      out.text += `\n[browser dialog auto-accepted: ${s.dialogs.join(" | ")}]`;
+      s.dialogs = [];
+    }
     return out;
   }
 
@@ -380,8 +398,10 @@ export class Executor {
     const { x, y, desc } = await this.centerOf(s, tabId, p);
     await this.mouse(tabId, "mouseMoved", x, y);
     for (let i = 1; i <= clicks; i++) {
-      await this.mouse(tabId, "mousePressed", x, y, { button: "left", clickCount: i });
-      await this.mouse(tabId, "mouseReleased", x, y, { button: "left", clickCount: i });
+      // A click may open alert()/confirm(); the renderer then blocks until our dialog handler
+      // accepts it, so never wait more than a few seconds for the input ack.
+      await withTimeout(this.mouse(tabId, "mousePressed", x, y, { button: "left", clickCount: i }), 8000);
+      await withTimeout(this.mouse(tabId, "mouseReleased", x, y, { button: "left", clickCount: i }), 8000);
     }
     await sleep(350);
     await this.waitForLoad(tabId, 5000);
@@ -583,4 +603,8 @@ const KEYS: Record<string, { key: string; code: string; keyCode: number }> = {
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
+  return Promise.race([p, new Promise<undefined>((r) => setTimeout(() => r(undefined), ms))]);
 }

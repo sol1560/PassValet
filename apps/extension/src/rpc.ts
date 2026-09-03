@@ -17,6 +17,8 @@ export class NativeRpc {
   private backoff = 1000;
   public connected = false;
   public onStateChange: ((connected: boolean) => void) | null = null;
+  /** Port opened; the caller should send ext.hello and then call markConnected(). */
+  public onOpen: (() => void) | null = null;
 
   constructor(private hostName: string, handler: Handler) {
     this.handler = handler;
@@ -37,14 +39,19 @@ export class NativeRpc {
         this.pending.clear();
         this.scheduleReconnect();
       });
-      this.setConnected(true);
-      this.backoff = 1000;
+      // "connected" only once the desktop app answers ext.hello
+      this.onOpen?.();
     } catch (e) {
       console.warn("[passvalet] connectNative failed", e);
       this.port = null;
       this.setConnected(false);
       this.scheduleReconnect();
     }
+  }
+
+  markConnected() {
+    this.backoff = 1000;
+    this.setConnected(true);
   }
 
   private setConnected(v: boolean) {

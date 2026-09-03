@@ -23,11 +23,12 @@ export default defineBackground(() => {
     void chrome.storage.session.set({ connected });
     void chrome.action.setBadgeText({ text: connected ? "" : "!" });
     void chrome.action.setBadgeBackgroundColor({ color: "#ff5c6c" });
-    if (connected) {
-      rpc
-        .call("ext.hello", { extension_version: chrome.runtime.getManifest().version, browser: navigator.userAgent.includes("Edg/") ? "edge" : "chrome" })
-        .catch((e) => console.warn("[passvalet] hello failed", e));
-    }
+  };
+  rpc.onOpen = () => {
+    rpc
+      .call("ext.hello", { extension_version: chrome.runtime.getManifest().version, browser: navigator.userAgent.includes("Edg/") ? "edge" : "chrome" }, 10000)
+      .then(() => rpc.markConnected())
+      .catch((e) => console.warn("[passvalet] hello failed", e?.message ?? e));
   };
 
   rpc.connect();

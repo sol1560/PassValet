@@ -259,6 +259,7 @@ pub fn start<R: Runtime>(
     let kind2 = args.kind.clone();
     tauri::async_runtime::spawn(async move {
         while let Some(ev) = rx.recv().await {
+            tracing::info!(target: "passvalet::run", "{}", serde_json::to_string(&ev).unwrap_or_default());
             reg2.record(&ev);
             if let RunEvent::Finished { outcome, .. } = &ev {
                 let v = vault2.lock().unwrap();

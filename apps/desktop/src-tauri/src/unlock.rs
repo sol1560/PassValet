@@ -51,7 +51,24 @@ fn any_window<R: Runtime>(app: &tauri::AppHandle<R>) -> Option<tauri::Window<R>>
 
 // ------------------------------------------------------------------ Touch ID + Keychain
 
+/// Debug + PASSVALET_DEV_SKIP_PRESENCE: keep the KEK in a file under PASSVALET_HOME instead of the
+/// Keychain, so unsigned dev builds do not trigger Keychain ACL dialogs in automated tests.
+fn dev_kek_file() -> Option<std::path::PathBuf> {
+    if dev_skip_presence() {
+        Some(passvalet_core::paths::app_dir().join("dev-kek.bin"))
+    } else {
+        None
+    }
+}
+
 fn keychain_read() -> Result<Option<Kek>, UnlockError> {
+    if let Some(f) = dev_kek_file() {
+        return match std::fs::read(&f) {
+            Ok(b) => Ok(Some(SymKey::from_slice(&b)?)),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(UnlockError::Keychain(e.to_string())),
+        };
+    }
     match security_framework::passwords::get_generic_password(KEYCHAIN_SERVICE, &keychain_account()) {
         Ok(bytes) => Ok(Some(SymKey::from_slice(&bytes)?)),
         Err(e) if e.code() == -25300 => Ok(None), // errSecItemNotFound
@@ -60,6 +77,9 @@ fn keychain_read() -> Result<Option<Kek>, UnlockError> {
 }
 
 fn keychain_write(kek: &Kek) -> Result<(), UnlockError> {
+    if let Some(f) = dev_kek_file() {
+        return std::fs::write(&f, kek.as_bytes()).map_err(|e| UnlockError::Keychain(e.to_string()));
+    }
     security_framework::passwords::set_generic_password(
         KEYCHAIN_SERVICE,
         &keychain_account(),
