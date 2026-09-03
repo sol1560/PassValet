@@ -6,6 +6,8 @@ Default permissions for macos-passkey plugin
 
 - `allow-register-passkey`
 - `allow-login-passkey`
+- `allow-touch-id-authenticate`
+- `allow-biometrics-available`
 
 ## Permission Table
 

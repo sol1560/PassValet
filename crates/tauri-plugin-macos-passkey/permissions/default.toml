@@ -4,5 +4,7 @@
 description = "Default permissions for macos-passkey plugin"
 permissions = [
   "allow-register-passkey",
-  "allow-login-passkey"
+  "allow-login-passkey",
+  "allow-touch-id-authenticate",
+  "allow-biometrics-available",
 ]

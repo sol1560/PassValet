@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Native passkeys require the app to be associated with the relying-party domain.
+       Replace passvalet.app with your domain and host
+       https://<domain>/.well-known/apple-app-site-association listing <TeamID>.ai.passvalet.desktop
+       under "webcredentials". See docs/passkey-setup.md. -->
+  <key>com.apple.developer.associated-domains</key>
+  <array>
+    <string>webcredentials:passvalet.app</string>
+    <string>webcredentials:passvalet.app?mode=developer</string>
+  </array>
+  <key>keychain-access-groups</key>
+  <array>
+    <string>$(AppIdentifierPrefix)ai.passvalet.desktop</string>
+  </array>
+</dict>
+</plist>

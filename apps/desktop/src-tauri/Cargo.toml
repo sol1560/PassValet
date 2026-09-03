@@ -2,5 +2,32 @@
 name = "passvalet-desktop"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+description = "PassValet desktop app"
+
+[lib]
+name = "passvalet_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
+passvalet-core.workspace = true
+passvalet-ipc.workspace = true
+passvalet-agent.workspace = true
+tauri-plugin-macos-passkey.workspace = true
+tauri = { version = "2", features = ["macos-private-api", "tray-icon", "image-png"] }
+tauri-plugin-opener = "2"
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+async-trait.workspace = true
+zeroize.workspace = true
+security-framework = "3"

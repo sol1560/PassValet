@@ -343,10 +343,10 @@
           "markdownDescription": "Denies the touch_id_authenticate command without any pre-configured scope."
         },
         {
-          "description": "Default permissions for macos-passkey plugin\n#### This default permission set includes:\n\n- `allow-register-passkey`\n- `allow-login-passkey`",
+          "description": "Default permissions for macos-passkey plugin\n#### This default permission set includes:\n\n- `allow-register-passkey`\n- `allow-login-passkey`\n- `allow-touch-id-authenticate`\n- `allow-biometrics-available`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Default permissions for macos-passkey plugin\n#### This default permission set includes:\n\n- `allow-register-passkey`\n- `allow-login-passkey`"
+          "markdownDescription": "Default permissions for macos-passkey plugin\n#### This default permission set includes:\n\n- `allow-register-passkey`\n- `allow-login-passkey`\n- `allow-touch-id-authenticate`\n- `allow-biometrics-available`"
         }
       ]
     }
