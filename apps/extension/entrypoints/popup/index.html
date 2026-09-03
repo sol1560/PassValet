@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PassValet</title>
+    <style>
+      body { width: 280px; margin: 0; padding: 14px; font: 13px -apple-system, "PingFang SC", sans-serif; background: #0f1115; color: #e6e8ee; }
+      h1 { font-size: 14px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+      .logo { width: 18px; height: 18px; border-radius: 5px; background: linear-gradient(135deg,#4f46e5,#8b5cf6); }
+      .row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: #8b93a7; }
+      .dot.ok { background: #34c77b; }
+      .dot.bad { background: #ff5c6c; }
+      .muted { color: #8b93a7; font-size: 12px; }
+      button { font: inherit; color: #e6e8ee; background: #1e222b; border: 1px solid #2a2f3a; border-radius: 8px; padding: 7px 10px; cursor: pointer; width: 100%; margin-top: 6px; }
+      button.danger { color: #ff5c6c; }
+      code { font-size: 11px; background: #171a21; padding: 1px 4px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1><span class="logo"></span> PassValet</h1>
+    <div class="row"><span id="dot" class="dot"></span><span id="status">检查中…</span></div>
+    <div id="runs" class="muted"></div>
+    <div id="help" class="muted" style="display:none">
+      未连接到桌面 app。请确认 PassValet.app 正在运行，并已在「设置 → 浏览器扩展」用本扩展 ID 注册 native host：<br /><code id="extid"></code>
+    </div>
+    <button id="reconnect">重新连接</button>
+    <button id="abort" class="danger" style="display:none">停止当前采集</button>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
