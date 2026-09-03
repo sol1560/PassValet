@@ -1,0 +1,10 @@
+[package]
+name = "passvalet-cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "passvalet"
+path = "src/main.rs"
+
+[dependencies]

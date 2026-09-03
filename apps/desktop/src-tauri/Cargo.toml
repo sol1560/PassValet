@@ -1,0 +1,6 @@
+[package]
+name = "passvalet-desktop"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]

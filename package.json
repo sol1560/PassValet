@@ -1,0 +1,17 @@
+{
+  "name": "passvalet",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "dev:desktop": "pnpm --filter @passvalet/desktop tauri dev",
+    "build:desktop": "pnpm --filter @passvalet/desktop tauri build",
+    "dev:extension": "pnpm --filter @passvalet/extension dev",
+    "build:extension": "pnpm --filter @passvalet/extension build",
+    "typecheck": "pnpm -r typecheck",
+    "gen:protocol": "cargo test -p passvalet-ipc --features ts export_bindings"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

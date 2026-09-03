@@ -1,0 +1,28 @@
+# Rust
+/target
+**/target
+Cargo.lock.bak
+
+# Node
+node_modules
+dist
+.output
+.wxt
+*.tsbuildinfo
+
+# Tauri
+apps/desktop/src-tauri/gen/schemas
+apps/desktop/src-tauri/target
+
+# Swift
+.build
+.swiftpm
+DerivedData
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
