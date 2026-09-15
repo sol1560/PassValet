@@ -32,7 +32,13 @@ impl<R: Runtime> RpcHandler for IpcHandler<R> {
     fn on_connect(&self, _peer: &Peer) {}
 
     fn on_disconnect(&self, peer_id: u64) {
-        self.state.extension.detach_if(peer_id);
+        // 先记录任务，避免重连期间新启动的任务被旧断线通知中止。
+        let active = self.state.runs.active();
+        if self.state.extension.detach_if(peer_id) {
+            if let Some(run) = active {
+                self.state.runs.abort(&run.run_id);
+            }
+        }
         let _ = self
             .app
             .emit("extension:changed", self.state.extension.is_connected());

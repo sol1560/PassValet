@@ -33,7 +33,8 @@
 | 34964063115 | GitHub Actions | M5设置/剪贴板/Intel | done | 16项桌面、ARM64及Intel正式包全部通过；两种架构启动截图已检查；watch进程196636 |
 | 34966972222 | GitHub Actions | M4轮换保护/M5安装删除 | done | 真实Claude注册通过；12项桌面通过，等待时继续按钮消失已复现；失败截图已检查，watch进程226518 |
 | 34967711151 | GitHub Actions | M4继续按钮修复验证 | done | 17项桌面与双架构包全部通过；等待、轮换拒绝及日志筛选截图已检查；watch进程232846 |
-| 34969135783 | GitHub Actions | M4取消保护/M5配置片段 | running | 重跑真实采集及两种架构包，新增配置片段检查；watch进程249082，输出/tmp/passvalet-cancellation-watch.log |
+| 34969135783 | GitHub Actions | M4取消保护/M5配置片段 | done | 18项桌面和双架构包全部通过；最新Intel启动截图已检查；watch进程249082已结束 |
+| 34970967289 | GitHub Actions | M3/M4浏览器断线回归 | done | 12项桌面通过、1项失败：Chrome断线5秒后仍运行，已检查失败截图；watch进程251894已结束 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |
