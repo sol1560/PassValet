@@ -257,11 +257,13 @@ describe('真实桌面与MCP', () => {
   it('cli-injection-preserves-project-data-and-reports-missing-keys', async () => {
     const dir = mkdtempSync('/tmp/passvalet-project-');
     try {
-      for (const missing of [false, true]) {
-        const requests = [{ service: 'e2e', key_type: 'api_key', env_var: 'TEST_TOKEN' }];
-        if (missing) requests.push({ service: 'e2e', key_type: 'missing_key', env_var: 'MISSING_TOKEN' });
+      for (const mode of ['complete', 'partial', 'missing']) {
+        const requests = [];
+        if (mode !== 'missing') requests.push({ service: 'e2e', key_type: 'api_key', env_var: 'TEST_TOKEN' });
+        if (mode !== 'complete') requests.push({ service: 'e2e', key_type: 'missing_key', env_var: 'MISSING_TOKEN' });
         writeFileSync(path.join(dir, '.passvalet.json'), JSON.stringify({ project: 'cli-test', requests }));
         writeFileSync(path.join(dir, '.env.local'), 'KEEP=original\n');
+        const previousInode = statSync(path.join(dir, '.env.local')).ino;
         const child = spawn(path.resolve('target/debug/passvalet'), ['inject'], { cwd: dir, env: process.env });
         let stdout = '';
         let stderr = '';
@@ -279,13 +281,18 @@ describe('真实桌面与MCP', () => {
           await $('button=批准').waitForDisplayed();
           await $('button=批准').click();
           const code = await closed;
-          assert.equal(code, missing ? 1 : 0, '有缺失项时CLI不能报成功');
+          assert.equal(code, mode === 'complete' ? 0 : 1, '有缺失项时CLI不能报成功');
           const contents = readFileSync(path.join(dir, '.env.local'), 'utf8');
           assert.ok(contents.includes('KEEP=original\n'), '保留原来的项目配置');
-          assert.ok(contents.includes(`TEST_TOKEN=${secret}\n`), '写入经批准的测试密钥');
-          assert.equal(statSync(path.join(dir, '.env.local')).mode & 0o777, 0o600);
+          if (mode !== 'missing') {
+            assert.ok(contents.includes(`TEST_TOKEN=${secret}\n`), '写入经批准的测试密钥');
+            assert.equal(statSync(path.join(dir, '.env.local')).mode & 0o777, 0o600);
+          } else {
+            assert.equal(contents, 'KEEP=original\n');
+            assert.equal(statSync(path.join(dir, '.env.local')).ino, previousInode, '全部缺失时不替换文件');
+          }
           assert.equal(stdout.includes(secret) || stderr.includes(secret), false, '普通注入不输出密钥');
-          if (missing) assert.ok(stderr.includes('missing_key'), '指出缺失的密钥类型');
+          if (mode !== 'complete') assert.ok(stderr.includes('missing_key'), '指出缺失的密钥类型');
         } finally {
           child.kill('SIGTERM');
           await browser.switchToWindow(mainWindow);
