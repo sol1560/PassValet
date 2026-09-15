@@ -39,6 +39,10 @@ export default function Keys({ info, onChanged }: { info: VaultInfo; onChanged: 
     services.find((s) => s.id === service)?.key_types.find((k) => k.id === kt)?.label ?? kt;
 
   async function reveal(s: SecretMeta) {
+    if (revealed[s.id]) {
+      setRevealed((r) => { const c = { ...r }; delete c[s.id]; return c; });
+      return;
+    }
     try {
       const v = await api.revealSecret(s.service, s.key_type);
       setRevealed((r) => ({ ...r, [s.id]: v }));

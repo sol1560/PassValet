@@ -81,7 +81,7 @@ function Shell() {
   const content = (() => {
     switch (page) {
       case "keys":
-        return <Keys info={info} onChanged={refresh} />;
+        return <Keys key={String(info.locked)} info={info} onChanged={refresh} />;
       case "collect":
         return <Collect info={info} extensionConnected={ext} />;
       case "sessions":
