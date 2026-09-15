@@ -45,7 +45,7 @@ export async function openExtension() {
       timeout: 30_000,
       timeoutMsg: '真实Chrome扩展未连接native host和桌面应用',
     });
-    assert.equal(await chrome.$('#extid').getText(), id);
+    assert.equal(await chrome.$('#extid').getProperty('textContent'), id);
     await chrome.saveScreenshot('test-results/chrome-extension-connected.png');
     return chrome;
   } catch (error) {
