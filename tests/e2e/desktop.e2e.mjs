@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { renameSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { browser, $ } from '@wdio/globals';
 import { McpClient, body } from './mcp-client.mjs';
@@ -116,6 +117,30 @@ describe('真实桌面与MCP', () => {
     await $('button=密钥').click();
     await $('button=锁定').click();
     await $('h2=保险库已锁定').waitForDisplayed();
+    await $('button=用 Touch ID 解锁').click();
+    await $('button=显示').waitForDisplayed();
+    await $('button=显示').click();
+    await browser.waitUntil(async () => (await $('.fp').getText()).includes(secret));
+    await $('button=隐藏').click();
+  });
+
+  it('legacy-key-unlocks-and-successful-rebind-preserves-data', async () => {
+    const home = process.env.PASSVALET_HOME;
+    const salt = execFileSync('sqlite3', [path.join(home, 'vault.sqlite'),
+      'SELECT lower(hex(kek_salt)) FROM vault_meta;']).toString().trim();
+    const currentFile = path.join(home, `dev-kek-${salt}.bin`);
+    assert.equal(statSync(currentFile).mode & 0o777, 0o600);
+    renameSync(currentFile, path.join(home, 'dev-kek.bin'));
+    await $('button=锁定').click();
+    await $('button=用 Touch ID 解锁').click();
+    await $('button=显示').waitForDisplayed();
+    await $('button=设置').click();
+    await $('button=重新绑定 Touch ID').click();
+    await $('.recovery').waitForDisplayed();
+    assert.ok((await $('.recovery').getText()).length > 20, '重新绑定应生成恢复密钥');
+    await $('button=我已保存').click();
+    await $('button=密钥').click();
+    await $('button=锁定').click();
     await $('button=用 Touch ID 解锁').click();
     await $('button=显示').waitForDisplayed();
     await $('button=显示').click();
