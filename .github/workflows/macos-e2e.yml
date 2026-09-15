@@ -43,8 +43,9 @@ jobs:
       - name: Rust tests
         run: cargo test --workspace --locked
       - name: Build real desktop with test driver
-        # WDIO的窗口焦点检查依赖全局API；只在测试构建启用。
-        run: pnpm --filter @passvalet/desktop tauri build --debug --no-bundle --features e2e --config '{"app":{"withGlobalTauri":true}}'
+        env:
+          VITE_PASSVALET_E2E: '1'
+        run: pnpm --filter @passvalet/desktop tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json
       - name: Real WKWebView and MCP tests
         run: bash scripts/test-desktop.sh
       - name: Test screenshots

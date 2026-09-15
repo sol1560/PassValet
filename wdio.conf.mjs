@@ -40,6 +40,13 @@ export const config = {
     await access(binary);
     await mkdir(artifacts, { recursive: true });
   },
+  before: async () => {
+    await browser.waitUntil(
+      () => browser.execute(() => typeof window.__wdio_original_core__?.invoke === 'function'),
+      { timeout: 15_000, timeoutMsg: '缺少WDIO前端插件，请使用工作流中的专用测试构建命令' },
+    );
+    await browser.tauri.execute(({ core }) => core.invoke('plugin:wdio|get_window_states'));
+  },
   afterTest: async (test, _context, result) => {
     if (!result.passed) {
       // 只使用假密钥。遮住恢复码与密钥输入框，避免把测试习惯带入真实数据测试。
