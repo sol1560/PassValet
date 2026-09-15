@@ -9,9 +9,16 @@
     "dev:extension": "pnpm --filter @passvalet/extension dev",
     "build:extension": "pnpm --filter @passvalet/extension build",
     "typecheck": "pnpm -r typecheck",
+    "test:e2e:desktop": "bash scripts/test-desktop.sh",
     "gen:protocol": "cargo test -p passvalet-ipc --features ts export_bindings"
   },
   "devDependencies": {
+    "@wdio/cli": "9.31.9",
+    "@wdio/globals": "9.31.3",
+    "@wdio/local-runner": "9.31.9",
+    "@wdio/mocha-framework": "9.31.9",
+    "@wdio/spec-reporter": "9.31.2",
+    "@wdio/tauri-service": "1.4.0",
     "typescript": "^5.9.0"
   }
 }

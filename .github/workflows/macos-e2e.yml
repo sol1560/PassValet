@@ -1,0 +1,54 @@
+name: macOS application tests
+
+on:
+  push:
+    branches: [amp/complete-passvalet]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      CARGO_TERM_COLOR: never
+      MACOSX_DEPLOYMENT_TARGET: '15.0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+          cache: pnpm
+      - name: Rust toolchain
+        run: rustup show active-toolchain
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm --filter @passvalet/desktop build
+      - run: pnpm build:extension
+      - name: Build CLI sidecar
+        run: |
+          cargo build --locked -p passvalet-cli
+          mkdir -p apps/desktop/src-tauri/binaries
+          cp target/debug/passvalet "apps/desktop/src-tauri/binaries/passvalet-$(rustc -vV | sed -n 's/^host: //p')"
+      - name: Rust tests
+        run: cargo test --workspace --locked
+      - name: Build real desktop with test driver
+        run: pnpm --filter @passvalet/desktop tauri build --debug --no-bundle --features e2e
+      - name: Real WKWebView and MCP tests
+        run: bash scripts/test-desktop.sh
+      - name: Test screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-e2e-screenshots
+          path: test-results/*.png
+          if-no-files-found: ignore
+          retention-days: 7

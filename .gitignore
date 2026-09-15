@@ -29,3 +29,5 @@ DerivedData
 
 # build artifacts
 apps/desktop/src-tauri/binaries/
+/test-results/
+/.amp/portals/

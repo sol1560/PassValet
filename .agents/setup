@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# orb只跑可移植Rust测试与前端；Swift和真实桌面在macOS Actions验证。
+if [[ ! -x "$HOME/.cargo/bin/rustup" ]]; then
+  installer="$(mktemp)"
+  curl --fail --silent --show-error --location https://sh.rustup.rs -o "$installer"
+  sh "$installer" -y --profile minimal --default-toolchain none
+  rm "$installer"
+fi
+export PATH="$HOME/.cargo/bin:$PATH"
+rustup toolchain install
+rustup show active-toolchain
+pnpm install --frozen-lockfile

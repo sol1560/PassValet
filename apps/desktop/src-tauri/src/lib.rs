@@ -34,7 +34,11 @@ pub fn run() {
         last_activity: Mutex::new(Instant::now()),
     });
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    #[cfg(all(feature = "e2e", debug_assertions))]
+    let builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
+
+    builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_macos_passkey::init())
         .manage(state.clone())
