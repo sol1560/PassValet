@@ -110,11 +110,7 @@ pub fn show_prompt_window<R: Runtime>(app: &tauri::AppHandle<R>) {
         let _ = w.emit("prompt:changed", ());
         return;
     }
-    let url = if cfg!(debug_assertions) {
-        WebviewUrl::App("index.html#/prompt".into())
-    } else {
-        WebviewUrl::App("index.html#/prompt".into())
-    };
+    let url = WebviewUrl::App("index.html#/prompt".into());
     match WebviewWindowBuilder::new(app, "prompt", url)
         .title("PassValet 授权")
         .inner_size(460.0, 560.0)

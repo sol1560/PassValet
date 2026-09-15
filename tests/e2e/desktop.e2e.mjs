@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { browser, $ } from '@wdio/globals';
 import { McpClient, body } from './mcp-client.mjs';
@@ -419,6 +419,28 @@ describe('真实桌面与MCP', () => {
       if (chrome) await chrome.deleteSession();
       await fixture.close();
       await browser.tauri.execute(({ core }, provider) => core.invoke('settings_set', { patch: { provider } }), settings.provider);
+    }
+  });
+
+  it('failed-settings-save-keeps-the-active-configuration', async () => {
+    const previous = await browser.tauri.execute(({ core }) => core.invoke('settings_get'));
+    const file = path.join(process.env.PASSVALET_HOME, 'settings.json');
+    const backup = `${file}.test-backup`;
+    renameSync(file, backup);
+    mkdirSync(file);
+    try {
+      const error = await browser.execute(async (minutes) => {
+        try {
+          await window.__TAURI__.core.invoke('settings_set', { patch: { auto_lock_minutes: minutes } });
+          return null;
+        } catch (error) { return String(error); }
+      }, previous.auto_lock_minutes + 1);
+      assert.ok(error, '模拟写入失败应返回错误');
+      const current = await browser.tauri.execute(({ core }) => core.invoke('settings_get'));
+      assert.equal(current.auto_lock_minutes, previous.auto_lock_minutes, '保存失败不能改变正在使用的设置');
+    } finally {
+      rmSync(file, { recursive: true });
+      renameSync(backup, file);
     }
   });
 });
