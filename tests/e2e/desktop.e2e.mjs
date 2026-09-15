@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
 import { browser, $ } from '@wdio/globals';
 import { McpClient, body } from './mcp-client.mjs';
 import { openExtension } from './chrome-extension.mjs';
@@ -97,5 +99,27 @@ describe('真实桌面与MCP', () => {
       await chrome.deleteSession();
     }
     await $('span=扩展未连接').waitForDisplayed();
+  });
+
+  it('failed-rebind-keeps-the-original-unlock-key', async () => {
+    const sql = (statement) => execFileSync('sqlite3', [
+      '-cmd', '.timeout 5000', path.join(process.env.PASSVALET_HOME, 'vault.sqlite'), statement,
+    ]);
+    await $('button=设置').click();
+    sql("CREATE TRIGGER fail_rebind BEFORE UPDATE ON vault_meta BEGIN SELECT RAISE(ABORT, 'test rebind metadata failure'); END;");
+    try {
+      await $('button=重新绑定 Touch ID').click();
+      await browser.waitUntil(async () => (await $('.toast.error').getText()).includes('test rebind metadata failure'));
+    } finally {
+      sql('DROP TRIGGER IF EXISTS fail_rebind;');
+    }
+    await $('button=密钥').click();
+    await $('button=锁定').click();
+    await $('h2=保险库已锁定').waitForDisplayed();
+    await $('button=用 Touch ID 解锁').click();
+    await $('button=显示').waitForDisplayed();
+    await $('button=显示').click();
+    await browser.waitUntil(async () => (await $('.fp').getText()).includes(secret));
+    await $('button=隐藏').click();
   });
 });
