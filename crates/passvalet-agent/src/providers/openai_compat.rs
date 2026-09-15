@@ -143,11 +143,11 @@ impl LlmProvider for OpenAiCompat {
         if status >= 400 {
             return Err(ProviderError::Status {
                 status,
-                body: text.chars().take(2000).collect(),
+                body: crate::redact::redact(&text).chars().take(2000).collect(),
             });
         }
         let v: Value = serde_json::from_str(&text)
-            .map_err(|e| ProviderError::Malformed(format!("{e}: {}", &text[..text.len().min(500)])))?;
+            .map_err(|e| ProviderError::Malformed(e.to_string()))?;
         let choice = v["choices"]
             .get(0)
             .ok_or_else(|| ProviderError::Malformed("no choices".into()))?;

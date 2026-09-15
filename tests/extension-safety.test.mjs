@@ -39,6 +39,7 @@ test('采集拒绝其他网站和非网页地址，包括跳转后的页面', as
   let created = 0;
   let redirect = false;
   let clipboardHook;
+  let systemClipboardReads = 0;
   globalThis.chrome = {
     tabs: {
       onRemoved: { addListener() {} },
@@ -60,7 +61,9 @@ test('采集拒绝其他网站和非网页地址，包括跳转后的页面', as
         if (redirect && method === 'Input.dispatchMouseEvent' && params.type === 'mouseReleased') {
           tab.url = 'https://other.test/';
         }
-        callback({ result: { value: 'safe page' }, nodes: [] });
+        if (params.expression?.includes('navigator.clipboard.readText')) systemClipboardReads++;
+        const value = params.expression?.startsWith('String(window.__pvClipboard') ? '' : 'safe page';
+        callback({ result: { value }, nodes: [] });
       },
     },
     runtime: {},
@@ -80,6 +83,9 @@ test('采集拒绝其他网站和非网页地址，包括跳转后的页面', as
     }
     const output = await executor.call('get_page_text', { run_id: 'run' });
     assert.equal(output.text, 'safe page', '允许读取本次任务的网站');
+    const emptyClipboard = await executor.call('capture_secret', { run_id: 'run', source: 'clipboard' });
+    assert.equal(systemClipboardReads, 0, '没有本页复制记录时，不得读取系统剪贴板');
+    assert.equal(emptyClipboard.is_error, true);
     await assert.rejects(executor.call('navigate', { run_id: 'run', url: 'https://other.test/keys' }), wrongOrigin);
     assert.equal(tab.url, `${origin}/keys`, '跨站导航不能发出请求');
     tab.url = 'https://other.test/';

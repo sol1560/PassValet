@@ -559,17 +559,6 @@ export class Executor {
         returnByValue: true,
       });
       value = String(r.result?.value ?? "").trim();
-      if (!value) {
-        // last resort: ask the page for the clipboard (needs focus + permission)
-        try {
-          const r2 = await this.cdp<{ result: { value?: string } }>(tabId, "Runtime.evaluate", {
-            expression: "navigator.clipboard.readText().catch(() => '')",
-            awaitPromise: true,
-            returnByValue: true,
-          });
-          value = String(r2.result?.value ?? "").trim();
-        } catch {}
-      }
       if (!value) return { text: "clipboard is empty: click the Copy button first, then call capture_secret again with source=\"clipboard\"", is_error: true };
     } else {
       if (!p.ref) throw rpcError("invalid_params", "ref required for source=element");
