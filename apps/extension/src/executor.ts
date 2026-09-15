@@ -14,6 +14,7 @@ export interface ToolOutput {
 
 interface RunSession {
   runId: string;
+  origin: string;
   tabIds: number[];
   current: number;
   groupId: number | null;
@@ -23,6 +24,19 @@ interface RunSession {
   attached: Set<number>;
   aborted: boolean;
   dialogs: string[];
+}
+
+function webUrl(value: string): URL {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw rpcError("unsafe_url", "网页地址无效");
+  }
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) {
+    throw rpcError("unsafe_url", "只允许不含用户名和密码的 HTTP(S) 网页地址");
+  }
+  return url;
 }
 
 const CLIPBOARD_HOOK = `(() => {
@@ -99,7 +113,8 @@ export class Executor {
   // ------------------------------------------------------------------ session
 
   async sessionBegin(runId: string, url: string): Promise<{ tab_id: string }> {
-    const tab = await chrome.tabs.create({ url, active: true });
+    const target = webUrl(url);
+    const tab = await chrome.tabs.create({ url: target.href, active: true });
     if (tab.id === undefined) throw rpcError("tab_failed", "could not create tab");
     let groupId: number | null = null;
     try {
@@ -110,6 +125,7 @@ export class Executor {
     }
     const s: RunSession = {
       runId,
+      origin: target.origin,
       tabIds: [tab.id],
       current: tab.id,
       groupId,
@@ -121,9 +137,10 @@ export class Executor {
       dialogs: [],
     };
     this.sessions.set(runId, s);
-    await this.attach(s, tab.id);
     await this.waitForLoad(tab.id, 20000);
-    await this.installHook(tab.id);
+    this.checkOrigin(s, (await this.state(tab.id))?.url ?? "");
+    await this.attach(s, tab.id);
+    await this.installHook(s, tab.id);
     return { tab_id: String(tab.id) };
   }
 
@@ -166,12 +183,16 @@ export class Executor {
     await this.cdp(tabId, "DOM.enable", {});
     await this.cdp(tabId, "Accessibility.enable", {});
     await this.cdp(tabId, "Runtime.enable", {});
-    await this.cdp(tabId, "Page.addScriptToEvaluateOnNewDocument", { source: CLIPBOARD_HOOK });
+    await this.cdp(tabId, "Page.addScriptToEvaluateOnNewDocument", { source: this.clipboardHook(s) });
   }
 
-  private async installHook(tabId: number) {
+  private clipboardHook(s: RunSession): string {
+    return `if (location.origin === ${JSON.stringify(s.origin)}) { ${CLIPBOARD_HOOK} }`;
+  }
+
+  private async installHook(s: RunSession, tabId: number) {
     try {
-      await this.cdp(tabId, "Runtime.evaluate", { expression: CLIPBOARD_HOOK });
+      await this.cdp(tabId, "Runtime.evaluate", { expression: this.clipboardHook(s) });
     } catch {}
   }
 
@@ -203,6 +224,12 @@ export class Executor {
     return t ? { tab_id: String(tabId), url: t.url ?? "", title: t.title ?? "" } : undefined;
   }
 
+  private checkOrigin(s: RunSession, url: string) {
+    if (webUrl(url).origin !== s.origin) {
+      throw rpcError("wrong_origin", `仅允许操作本次任务的网站 ${s.origin}；如需登录，请手动完成后返回该网站`);
+    }
+  }
+
   private tabOf(s: RunSession, params: any): number {
     if (params?.tab_id !== undefined && params.tab_id !== null && params.tab_id !== "") {
       const id = Number(params.tab_id);
@@ -225,9 +252,12 @@ export class Executor {
     if (!runId) throw rpcError("invalid_params", "run_id missing");
     const s = this.session(runId);
     const tabId = this.tabOf(s, params);
+    this.checkOrigin(s, (await this.state(tabId))?.url ?? "");
     await this.attach(s, tabId);
     const out = await this.dispatch(s, tabId, tool, params);
-    if (!out.browser_state && tool !== "screenshot") out.browser_state = await this.state(tabId);
+    const state = await this.state(tabId);
+    this.checkOrigin(s, state?.url ?? "");
+    out.browser_state = state;
     if (s.dialogs.length) {
       out.text += `\n[browser dialog: ${s.dialogs.join(" | ")}]`;
       s.dialogs = [];
@@ -303,12 +333,14 @@ export class Executor {
         if (/^[a-z][a-z0-9+.-]*:/i.test(target)) throw rpcError("bad_scheme", "only http(s) URLs are allowed");
         target = "https://" + target;
       }
+      this.checkOrigin(s, target);
       await chrome.tabs.update(tabId, { url: target });
     }
     await this.waitForLoad(tabId, 30000);
-    await this.installHook(tabId);
-    s.refs.clear();
     const st = await this.state(tabId);
+    this.checkOrigin(s, st?.url ?? "");
+    await this.installHook(s, tabId);
+    s.refs.clear();
     return { text: `navigated: ${st?.title ?? ""} ${st?.url ?? ""}`, browser_state: st };
   }
 
@@ -400,7 +432,7 @@ export class Executor {
     await this.mouse(tabId, "mouseMoved", x, y);
     for (let i = 1; i <= clicks; i++) {
       // A click may open alert()/confirm(); the renderer then blocks until our dialog handler
-      // accepts it, so never wait more than a few seconds for the input ack.
+      // dismisses it, so never wait more than a few seconds for the input ack.
       await withTimeout(this.mouse(tabId, "mousePressed", x, y, { button: "left", clickCount: i }), 8000);
       await withTimeout(this.mouse(tabId, "mouseReleased", x, y, { button: "left", clickCount: i }), 8000);
     }

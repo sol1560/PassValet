@@ -5,6 +5,7 @@ import path from 'node:path';
 import { browser, $ } from '@wdio/globals';
 import { McpClient, body } from './mcp-client.mjs';
 import { openExtension } from './chrome-extension.mjs';
+import { collectionFixture } from './collection-fixture.mjs';
 import { ipcCall } from '../ipc-client.mjs';
 
 const secret = 'passvalet-e2e-only-not-a-real-api-key';
@@ -326,5 +327,37 @@ describe('真实桌面与MCP', () => {
     assert.equal(error, '该请求已过期');
     const sessions = await browser.tauri.execute(({ core }) => core.invoke('list_sessions', { includeInactive: false }));
     assert.equal(sessions.some((s) => s.purpose === '测试过期后拒绝批准'), false);
+  });
+
+  it('real-extension-collects-without-sending-the-key-to-the-model', async function () {
+    this.timeout(240_000);
+    const fixture = await collectionFixture();
+    const settings = await browser.tauri.execute(({ core }) => core.invoke('settings_get'));
+    let chrome;
+    try {
+      await browser.tauri.execute(({ core }, provider) => core.invoke('settings_set', { patch: { provider } }), fixture.provider);
+      chrome = await openExtension();
+      await $('span=扩展已连接').waitForDisplayed();
+      await $('button=自动采集').click();
+      await $('button=采集测试').click();
+      await $('button=在浏览器中开始采集 采集测试').click();
+      let run;
+      await browser.waitUntil(async () => {
+        const runs = await browser.tauri.execute(({ core }) => core.invoke('list_runs'));
+        run = runs.find((r) => r.service === 'collection_test');
+        return Boolean(run?.finished);
+      }, { timeout: 45_000, timeoutMsg: '真实扩展采集没有结束' });
+      assert.equal(run.finished.status, 'success', JSON.stringify(run.finished));
+      const value = await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
+        service: 'collection_test', keyType: 'api_key',
+      }));
+      fixture.verify(value);
+      await $('span=成功').waitForDisplayed();
+      await browser.saveScreenshot('test-results/collection-success.png');
+    } finally {
+      if (chrome) await chrome.deleteSession();
+      await fixture.close();
+      await browser.tauri.execute(({ core }, provider) => core.invoke('settings_set', { patch: { provider } }), settings.provider);
+    }
   });
 });
