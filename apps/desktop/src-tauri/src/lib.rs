@@ -36,7 +36,9 @@ pub fn run() {
 
     let builder = tauri::Builder::default();
     #[cfg(all(feature = "e2e", debug_assertions))]
-    let builder = builder.plugin(tauri_plugin_wdio_webdriver::init());
+    let builder = builder
+        .plugin(tauri_plugin_wdio::init())
+        .plugin(tauri_plugin_wdio_webdriver::init());
 
     builder
         .plugin(tauri_plugin_opener::init())
