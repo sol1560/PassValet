@@ -1,6 +1,7 @@
 //! Unix-socket server used by the desktop app.
 
 use std::future::Future;
+use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -23,6 +24,7 @@ pub trait RpcHandler: Send + Sync + 'static {
 pub struct IpcServer {
     path: PathBuf,
     listener: UnixListener,
+    file_id: (u64, u64),
 }
 
 impl IpcServer {
@@ -31,7 +33,13 @@ impl IpcServer {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        if path.exists() {
+        if let Ok(meta) = std::fs::symlink_metadata(path) {
+            if !meta.file_type().is_socket() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::AlreadyExists,
+                    "socket path is not a socket; refusing to remove it",
+                ));
+            }
             match std::os::unix::net::UnixStream::connect(path) {
                 Ok(_) => {
                     return Err(std::io::Error::new(
@@ -39,20 +47,19 @@ impl IpcServer {
                         format!("another PassValet instance owns {}", path.display()),
                     ));
                 }
-                Err(_) => {
-                    let _ = std::fs::remove_file(path);
+                Err(e) if e.kind() == std::io::ErrorKind::ConnectionRefused => {
+                    std::fs::remove_file(path)?;
                 }
+                Err(e) => return Err(e),
             }
         }
         let listener = UnixListener::bind(path)?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
-        }
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
+        let meta = std::fs::symlink_metadata(path)?;
         Ok(IpcServer {
             path: path.to_path_buf(),
             listener,
+            file_id: (meta.dev(), meta.ino()),
         })
     }
 
@@ -91,7 +98,11 @@ impl IpcServer {
 
 impl Drop for IpcServer {
     fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.path);
+        if let Ok(meta) = std::fs::symlink_metadata(&self.path) {
+            if meta.file_type().is_socket() && (meta.dev(), meta.ino()) == self.file_id {
+                let _ = std::fs::remove_file(&self.path);
+            }
+        }
     }
 }
 
@@ -125,6 +136,37 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn bind_preserves_regular_files_and_symlinks() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("vault.sqlite");
+        std::fs::write(&path, b"existing user data").unwrap();
+        assert!(IpcServer::bind(&path).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), b"existing user data");
+        let link = dir.path().join("link.sock");
+        std::os::unix::fs::symlink(dir.path().join("absent"), &link).unwrap();
+        assert!(IpcServer::bind(&link).is_err());
+        assert!(std::fs::symlink_metadata(&link).unwrap().is_symlink());
+    }
+
+    #[tokio::test]
+    async fn bind_replaces_only_stale_socket_and_drop_preserves_replacement() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("test.sock");
+        drop(std::os::unix::net::UnixListener::bind(&path).unwrap());
+        let server = IpcServer::bind(&path).unwrap();
+        assert_eq!(
+            std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert!(IpcServer::bind(&path).is_err());
+        std::fs::remove_file(&path).unwrap();
+        std::fs::write(&path, b"replacement").unwrap();
+        drop(server);
+        assert_eq!(std::fs::read(path).unwrap(), b"replacement");
+    }
+
+    #[tokio::test]
     async fn roundtrip_and_reverse_call() {
         let dir = tempfile::tempdir().unwrap();
         let sock = dir.path().join("t.sock");
@@ -147,7 +189,10 @@ mod tests {
             .unwrap();
         assert_eq!(v, serde_json::json!({ "a": 1 }));
 
-        let v: serde_json::Value = client.call("callback", &serde_json::json!({})).await.unwrap();
+        let v: serde_json::Value = client
+            .call("callback", &serde_json::json!({}))
+            .await
+            .unwrap();
         assert_eq!(v["client_said"], "pong");
 
         let err = client
