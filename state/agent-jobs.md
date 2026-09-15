@@ -32,7 +32,8 @@
 | 34963420759 | GitHub Actions | M4修复/M5设置复现 | done | 13项桌面通过；设置保存失败后内存值变成31而非30已复现；watch进程193621已结束 |
 | 34964063115 | GitHub Actions | M5设置/剪贴板/Intel | done | 16项桌面、ARM64及Intel正式包全部通过；两种架构启动截图已检查；watch进程196636 |
 | 34966972222 | GitHub Actions | M4轮换保护/M5安装删除 | done | 真实Claude注册通过；12项桌面通过，等待时继续按钮消失已复现；失败截图已检查，watch进程226518 |
-| 34967711151 | GitHub Actions | M4继续按钮修复验证 | running | 重跑等待继续、危险轮换拒绝、删除确认及双架构包；watch进程232846，输出/tmp/passvalet-resume-fixed-watch.log |
+| 34967711151 | GitHub Actions | M4继续按钮修复验证 | done | 17项桌面与双架构包全部通过；等待、轮换拒绝及日志筛选截图已检查；watch进程232846 |
+| 34969135783 | GitHub Actions | M4取消保护/M5配置片段 | running | 重跑真实采集及两种架构包，新增配置片段检查；watch进程249082，输出/tmp/passvalet-cancellation-watch.log |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |

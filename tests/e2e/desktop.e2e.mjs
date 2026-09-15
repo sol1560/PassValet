@@ -397,6 +397,41 @@ describe('真实桌面与MCP', () => {
       await $('span=已中止').waitForDisplayed();
       await browser.waitUntil(async () => !(await $('.toast').isExisting()));
       await browser.saveScreenshot('test-results/collection-aborted.png');
+      fixture.stall();
+      await $('button=在浏览器中开始采集 采集测试').click();
+      await browser.waitUntil(() => fixture.modelWaiting, { timeout: 10_000 });
+      const disconnectedRun = (await browser.tauri.execute(({ core }) => core.invoke('list_runs')))
+        .find((r) => r.service === 'collection_test' && !r.finished)?.run_id;
+      assert.ok(disconnectedRun, '断线前必须确实存在正在等待模型的任务');
+      // 普通客户端的短连接结束不能中止仍连接着Chrome的任务。
+      assert.equal((await ipcCall(process.env.PASSVALET_SOCKET, 'status', {})).result.extension_connected, true);
+      assert.equal((await browser.tauri.execute(({ core }) => core.invoke('list_runs')))
+        .find((r) => r.run_id === disconnectedRun).finished, null);
+      await chrome.deleteSession();
+      chrome = undefined;
+      await browser.waitUntil(async () => {
+        const runs = await browser.tauri.execute(({ core }) => core.invoke('list_runs'));
+        return runs.find((r) => r.run_id === disconnectedRun)?.finished?.status === 'aborted';
+      }, { timeout: 5_000, timeoutMsg: 'Chrome断线后应及时中止，不应等待模型超时' });
+      fixture.verify(await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
+        service: 'collection_test', keyType: 'api_key',
+      })));
+      chrome = await openExtension();
+      await $('span=扩展已连接').waitForDisplayed();
+      const previousRuns = (await browser.tauri.execute(({ core }) => core.invoke('list_runs'))).map((r) => r.run_id);
+      fixture.copyOnce();
+      await $('button=在浏览器中开始采集 采集测试').click();
+      await $('button=我已完成，继续').waitForDisplayed();
+      await $('button=我已完成，继续').click();
+      await browser.waitUntil(async () => {
+        const runs = await browser.tauri.execute(({ core }) => core.invoke('list_runs'));
+        run = runs.find((r) => !previousRuns.includes(r.run_id));
+        return Boolean(run?.finished);
+      }, { timeout: 45_000, timeoutMsg: 'Chrome重连后不能重新完成采集' });
+      assert.equal(run.finished.status, 'success', JSON.stringify(run.finished));
+      fixture.verify(await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
+        service: 'collection_test', keyType: 'api_key',
+      })));
       fixture.finishWithoutCapture();
       for (const rotation of [false, true]) {
         const pending = rotation
