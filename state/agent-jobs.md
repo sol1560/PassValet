@@ -2,7 +2,9 @@
 
 | id | kind | target | status | notes |
 | --- | --- | --- | --- | --- |
-| 34938681897 | GitHub Actions | M2 | running | 第二次运行，仓库公开后已启动macOS；本地watch进程22095 |
+| 34938681897 | GitHub Actions | M2 | done | 第二次运行找到创建参数错误；已读失败截图 |
+| 34941386442 | GitHub Actions | M2 | done | 创建/恢复确认通过；添加成功但测试选择器错误；已读截图 |
+| 34942291681 | GitHub Actions | M2 | running | 包含隐藏/锁定回归与真实Chrome；本地watch进程29948 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |
