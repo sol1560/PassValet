@@ -109,8 +109,8 @@ instructions = "This local test only checks incomplete outcomes. Do not delete a
 `);
   return {
     provider: { kind: 'openai_compat', base_url: `${base}/v1`, models: ['test-model'] },
-    copyOnce() { copyMode = true; secret = secrets[1]; requests = 0; },
-    stall() { stalled = true; },
+    copyOnce() { copyMode = true; secret = secrets[1]; requests = 0; stalled = false; incomplete = false; },
+    stall() { stalled = true; modelWaiting = false; },
     finishWithoutCapture() { incomplete = true; stalled = false; requests = 0; },
     get modelWaiting() { return modelWaiting; },
     get requestCount() { return requests; },
