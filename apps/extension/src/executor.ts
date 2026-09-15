@@ -61,17 +61,18 @@ export class Executor {
         }
       }
     });
-    // JS dialogs (alert/confirm/prompt) block the page: accept them and tell the model.
+    // Dismiss alerts, but never approve a confirmation or submit a prompt automatically.
     chrome.debugger.onEvent.addListener((source, method, params: any) => {
       if (method !== "Page.javascriptDialogOpening" || source.tabId === undefined) return;
       const tabId = source.tabId;
-      console.log("[passvalet] dialog on tab", tabId, params?.type, params?.message);
+      const accept = params?.type === "alert";
+      console.log("[passvalet] dialog on tab", tabId, params?.type);
       for (const s of this.sessions.values()) {
         if (s.attached.has(tabId)) {
-          s.dialogs.push(`${params?.type ?? "dialog"}: ${String(params?.message ?? "").slice(0, 300)}`);
+          s.dialogs.push(`${params?.type ?? "dialog"} ${accept ? "dismissed" : "cancelled; ask the user to handle this step manually"}: ${redact(String(params?.message ?? "")).slice(0, 300)}`);
         }
       }
-      chrome.debugger.sendCommand({ tabId }, "Page.handleJavaScriptDialog", { accept: true, promptText: params?.defaultPrompt ?? "" }, () => void chrome.runtime.lastError);
+      chrome.debugger.sendCommand({ tabId }, "Page.handleJavaScriptDialog", { accept }, () => void chrome.runtime.lastError);
     });
     chrome.debugger.onDetach.addListener((source, reason) => {
       if (source.tabId === undefined) return;
@@ -228,7 +229,7 @@ export class Executor {
     const out = await this.dispatch(s, tabId, tool, params);
     if (!out.browser_state && tool !== "screenshot") out.browser_state = await this.state(tabId);
     if (s.dialogs.length) {
-      out.text += `\n[browser dialog auto-accepted: ${s.dialogs.join(" | ")}]`;
+      out.text += `\n[browser dialog: ${s.dialogs.join(" | ")}]`;
       s.dialogs = [];
     }
     return out;
