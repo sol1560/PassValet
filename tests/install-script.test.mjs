@@ -7,7 +7,7 @@ import test from 'node:test';
 
 function installTest(check) {
   const home = mkdtempSync(path.join(tmpdir(), 'passvalet-install-'));
-  const cli = path.join(home, 'passvalet');
+  const cli = path.join(home, 'passvalet "test"');
   const bin = path.join(home, 'bin');
   mkdirSync(bin);
   mkdirSync(path.join(home, '.cursor'));
@@ -18,10 +18,13 @@ function installTest(check) {
   chmodSync(path.join(bin, 'claude'), 0o700);
   const config = path.join(home, '.cursor', 'mcp.json');
   const run = () => spawnSync('bash', ['scripts/install-mcp.sh', cli], {
-    encoding: 'utf8', env: { ...process.env, HOME: home, PATH: `${bin}:${process.env.PATH}` },
+    encoding: 'utf8', env: {
+      ...process.env, HOME: home, CODEX_HOME: path.join(home, '.codex'),
+      PATH: `${process.env.PASSVALET_TEST_CODEX_BIN || bin}:${bin}:${process.env.PATH}`,
+    },
   });
   try {
-    check({ config, cli, run });
+    check({ config, cli, run, home });
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
@@ -50,5 +53,38 @@ test('已有Cursor配置损坏时安装失败而不是清空原文件', () => {
     const result = run();
     assert.notEqual(result.status, 0, '无效配置必须拒绝写入');
     assert.equal(readFileSync(config, 'utf8'), previous);
+  });
+});
+
+test('真实Codex首次安装、更新旧路径及损坏配置保护', {
+  skip: !process.env.PASSVALET_TEST_CODEX_BIN,
+}, () => {
+  installTest(({ cli, run, home }) => {
+    const config = path.join(home, '.codex', 'config.toml');
+    const get = (name) => {
+      const result = spawnSync(path.join(process.env.PASSVALET_TEST_CODEX_BIN, 'codex'),
+        ['mcp', 'get', name, '--json'], {
+          encoding: 'utf8', env: { ...process.env, HOME: home, CODEX_HOME: path.dirname(config) },
+        });
+      assert.equal(result.status, 0, result.stderr);
+      return JSON.parse(result.stdout);
+    };
+    let result = run();
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(get('passvalet').transport.command, cli);
+    writeFileSync(config, 'model = "gpt-5"\n[mcp_servers.other]\ncommand = "other-tool"\n[mcp_servers.passvalet]\ncommand = "old-path"\nargs = ["mcp"]\n');
+    for (let i = 0; i < 2; i++) {
+      result = run();
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(get('passvalet').transport.command, cli);
+      assert.deepEqual(get('passvalet').transport.args, ['mcp']);
+      assert.equal(get('other').transport.command, 'other-tool');
+      assert.ok(readFileSync(config, 'utf8').includes('model = "gpt-5"'));
+    }
+    const broken = '[mcp_servers.other\n';
+    writeFileSync(config, broken);
+    result = run();
+    assert.notEqual(result.status, 0);
+    assert.equal(readFileSync(config, 'utf8'), broken);
   });
 });
