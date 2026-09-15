@@ -238,17 +238,15 @@ impl Vault {
         } else {
             (None, None, None)
         };
-        db::update_meta_keys(
-            &tx,
-            provider.as_str(),
-            &new_salt,
-            &verifier,
-            rs.as_deref(),
-            rb.as_deref(),
-            credential_id.as_deref(),
-            user_handle.as_deref(),
-            &Utc::now().to_rfc3339(),
-        )?;
+        let mut meta = db::read_meta(&tx)?.ok_or(CoreError::NotInitialized)?;
+        meta.provider = provider.as_str().into();
+        meta.kek_salt = new_salt;
+        meta.verifier = verifier;
+        meta.recovery_salt = rs;
+        meta.recovery_wrapped_kek = rb;
+        meta.credential_id = credential_id;
+        meta.user_handle = user_handle;
+        db::update_meta_keys(&tx, &meta, &Utc::now().to_rfc3339())?;
         tx.commit()?;
         self.kek = Some(new_kek);
         Ok(rt)
@@ -257,19 +255,11 @@ impl Vault {
     /// Issue a new recovery key (invalidates the previous one).
     pub fn regenerate_recovery(&mut self) -> CoreResult<String> {
         let kek = self.kek()?.clone();
-        let meta = db::read_meta(&self.conn)?.ok_or(CoreError::NotInitialized)?;
+        let mut meta = db::read_meta(&self.conn)?.ok_or(CoreError::NotInitialized)?;
         let (salt, blob, text) = Self::make_recovery(&kek)?;
-        db::update_meta_keys(
-            &self.conn,
-            &meta.provider,
-            &meta.kek_salt,
-            &meta.verifier,
-            Some(&salt),
-            Some(&blob),
-            meta.credential_id.as_deref(),
-            meta.user_handle.as_deref(),
-            &Utc::now().to_rfc3339(),
-        )?;
+        meta.recovery_salt = Some(salt);
+        meta.recovery_wrapped_kek = Some(blob);
+        db::update_meta_keys(&self.conn, &meta, &Utc::now().to_rfc3339())?;
         Ok(text)
     }
 

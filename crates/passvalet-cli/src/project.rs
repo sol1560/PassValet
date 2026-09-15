@@ -460,8 +460,8 @@ pub async fn list() -> Result<()> {
         return Ok(());
     }
     println!(
-        "{:<12} {:<22} {:<16} {:<10} {}",
-        "service", "key_type", "preview", "source", "updated"
+        "{:<12} {:<22} {:<16} {:<10} updated",
+        "service", "key_type", "preview", "source"
     );
     for k in res.keys {
         println!(
