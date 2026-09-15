@@ -197,7 +197,7 @@ impl Runner {
             s.push_str("\n\nUser hints:\n");
             for h in &req.hints {
                 s.push_str("- ");
-                s.push_str(h);
+                s.push_str(&redact::redact(h));
                 s.push('\n');
             }
         }
