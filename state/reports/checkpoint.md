@@ -15,7 +15,9 @@
 - [运行34974665891](https://github.com/sol1560/PassValet/actions/runs/34974665891) 的18项桌面及双架构包通过：16个同时采集请求只接受1个，已知令牌隐藏检查通过。
 - [运行34976427155](https://github.com/sol1560/PassValet/actions/runs/34976427155) 的19项桌面及双架构包通过：真实一分钟空闲锁定、锁定期间授权读取拒绝、解锁后原值不变。锁定截图已检查。
 - 真实模型最近单独重跑为5 passed、0 ignored，22.34秒，不含网站管理操作。
-- 运行34979027472的18项桌面通过，新增键盘解锁检查失败。驱动源码确认 `browser.keys` 只合成事件，没有原生Enter按钮激活行为；改用macOS原生按键测试，尚未重跑。最小窗口检查因前项失败尚未执行。
+- [运行34980422186](https://github.com/sol1560/PassValet/actions/runs/34980422186) 为20 passing (1m 59.1s)，两种安装包通过，启动截图均已检查。键盘检查改用System Events发送真实Enter并验证isTrusted，没有修改应用去迎合合成按键。五页最小窗口检查通过，但截图发现日志详情列过窄，继续修复。
+- [运行34982392762](https://github.com/sol1560/PassValet/actions/runs/34982392762) 为20 passing (1m 58s)，日志列宽、页面及.main内容区域无横向溢出检查通过；正常窗口筛选及小窗口日志截图已检查。小窗口截图保存在 `.amp/in/artifacts/macos-minimum-audit.png`。双架构包全部通过，两种启动截图已检查；下载包在 `.amp/in/artifacts/passvalet-arm64`、`.amp/in/artifacts/passvalet-intel`，各5项SHA256校验全部通过。
+- GitHub、Cloudflare、OpenAI不再指示默认申请全部范围；改为范围不明确时等待用户选择。本地47项Rust和严格检查通过，尚待新macOS运行；没有执行真实网站创建操作，不把提示词当作程序权限限制。
 
 ## 未完成与外部条件
 

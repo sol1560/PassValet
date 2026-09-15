@@ -39,3 +39,5 @@
 - 先在Runner入口拒绝Rotate；不能只凭网页提示词允许删除，也不能把此保护当成轮换完成。恢复自动执行前必须有受程序控制的创建、持久保存、精确撤销路径。
 - OpenAI官方已有服务账号密钥创建端点 `POST /organization/projects/{project_id}/service_accounts/{service_account_id}/api_keys`，返回完整value和唯一id，支持scopes和expires_in_seconds；示例使用OPENAI_ADMIN_KEY。它是后续候选方式，不是已实现或已获管理权限。不能把ZenMux模型调用凭据用于服务管理。
 - 来源：https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/projects/subresources/service_accounts/subresources/api_keys/methods/create 。当前没有调用此接口，没有创建或撤销真实资源。
+- 进一步核对本地实现：`VaultSink::store`只向metadata写入run_id，没有第三方密钥/项目/账号ID；`Vault::put_secret`覆盖同一(service,key_type)行的旧密文与metadata，没有旧版本记录。可靠轮换还需要保留旧版本、保存新版本和精确的第三方撤销入口，不能只开放现有通用click。
+- GitHub组织PAT管理端点撤销的是对该组织的访问，不等于删除用户PAT；官方说明仅GitHub Apps可调用。因此不能把它当成现有PAT的通用轮换接口。来源：https://docs.github.com/en/rest/orgs/personal-access-tokens 、https://docs.github.com/en/organizations/managing-programmatic-access-to-your-organization/reviewing-and-revoking-personal-access-tokens-in-your-organization 。没有调用管理端点。
