@@ -39,6 +39,22 @@ describe('真实桌面与MCP', () => {
     assert.equal(body(result).code, 'no_session');
   });
 
+  it('hide-and-lock-clear-revealed-keys', async () => {
+    await $('button=显示').click();
+    await browser.waitUntil(async () => (await $('.fp').getText()).includes(secret));
+    await $('button=隐藏').click();
+    await browser.waitUntil(async () => !(await $('.fp').getText()).includes(secret));
+    await $('button=显示').click();
+    await browser.waitUntil(async () => (await $('.fp').getText()).includes(secret));
+    await $('button=锁定').click();
+    await $('h2=保险库已锁定').waitForDisplayed();
+    assert.equal(await $('.fp').isExisting(), false);
+    await $('button=用 Touch ID 解锁').click();
+    await $('button=显示').waitForDisplayed();
+    assert.equal((await $('.fp').getText()).includes(secret), false);
+    await browser.saveScreenshot('test-results/keys-after-unlock.png');
+  });
+
   it('approve-read-deny-ungranted-and-revoke', async () => {
     const pending = mcp.call('request_permissions', {
       purpose: '端到端测试：读取专用测试密钥',
