@@ -1,0 +1,95 @@
+PassValet Source-Viewing and Commercial License Requirement
+Version 1.0
+
+Copyright (c) 2026 sol1560. All rights reserved.
+
+This is a source-available, proprietary license. It is not an open-source
+license and is not approved by the Open Source Initiative (OSI).
+
+1. Scope
+
+"Software" means the first-party PassValet source code, documentation,
+scripts, artwork, and other materials distributed with this license.
+"Licensor" means the applicable copyright holder or an authorized licensing
+representative. Third-party materials and previously granted rights are
+addressed in section 5.
+
+2. Permission to inspect source
+
+Subject to this license, you may view the Software and download and retain
+an unmodified copy solely to read, inspect, or perform static analysis of
+the source. You must preserve this license and all copyright, attribution,
+and other legal notices. This limited permission does not authorize building,
+executing, deploying, modifying, or otherwise using the Software.
+
+Where the Software is hosted in a public GitHub repository, the viewing and
+forking rights granted under GitHub's applicable Terms of Service remain
+unaffected. A public repository or fork does not, by itself, grant permission
+to run, deploy, modify, sublicense, or commercially exploit the Software.
+
+3. Paid commercial license required for use
+
+Except for section 2, applicable statutory rights, and section 5, you must
+first purchase and obtain a separate written commercial license from the
+Licensor before you may:
+
+  a. build, compile, install, execute, test, or operate the Software;
+  b. use the Software for personal, educational, research, nonprofit,
+     internal business, production, evaluation, or commercial purposes;
+  c. self-host the Software or make its functionality available to others,
+     including as a hosted service, managed service, API, or SaaS product;
+  d. modify, adapt, translate, or create derivative works of the Software;
+  e. copy beyond section 2, redistribute, sell, rent, sublicense, or embed
+     the Software or substantial portions of it in another product; or
+  f. use the Software or substantial portions of it to develop or operate
+     a competing product or service.
+
+There is no free personal-use, noncommercial-use, evaluation, or production
+grant under this license. A separate written commercial license specifies
+the authorized users, purposes, deployment limits, duration, and fees.
+Payment alone, a donation, access to source, or silence from the Licensor
+does not grant additional rights. Any exception must be expressly granted
+in writing by the Licensor. Authorized work performed for the Licensor is
+governed by that separate authorization, not a general public-use grant.
+
+For commercial licensing, contact the owner of the official repository:
+https://github.com/sol1560/PassValet
+Do not include secrets, payment details, or other confidential information
+in public issues. The absence of a checkout or pricing page does not grant
+permission to use the Software without a written license.
+
+4. Reserved rights and termination
+
+All rights not expressly granted are reserved. No trademark license or
+patent license is granted by this document. You may not remove legal notices
+or misrepresent the Software as open source or as your own licensed work.
+The permissions granted by this document terminate automatically if you
+violate its terms. Upon termination, cease activities relying on those
+permissions and delete copies held solely under them. Rights granted under
+GitHub's applicable terms, a separate agreement, section 5, or applicable
+law are not terminated by this section.
+
+5. Third-party materials and earlier licenses
+
+Third-party components retain their own licenses. In particular, the
+contents of crates/tauri-plugin-macos-passkey/ are separately licensed under
+MIT OR Apache-2.0, as stated in that directory. Dependencies are governed
+by their respective licenses. Nothing in this document restricts rights
+granted by those licenses over those materials.
+
+This document applies to versions distributed under it. It does not revoke
+or retroactively restrict rights validly granted under a prior license.
+No provision limits rights that cannot lawfully be restricted, including
+applicable statutory exceptions and independently developed work that does
+not copy protected portions of the Software.
+
+6. Disclaimer
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED "AS IS",
+WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE LICENSOR OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM OR IN
+CONNECTION WITH THE SOFTWARE OR ITS USE, WHETHER IN CONTRACT, TORT, OR
+OTHERWISE. A SEPARATE WRITTEN COMMERCIAL AGREEMENT MAY PROVIDE DIFFERENT
+WARRANTIES OR LIABILITY TERMS FOR ITS LICENSEE.

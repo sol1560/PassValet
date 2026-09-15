@@ -2,7 +2,7 @@
 name = "passvalet-ipc"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+license-file.workspace = true
 description = "Local JSON-RPC over Unix socket between the PassValet desktop app, CLI/MCP and browser extension host"
 
 [features]
