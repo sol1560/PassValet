@@ -16,8 +16,9 @@
 | 34949434775 | GitHub Actions | M3并发 | done | 10项通过：两个客户端不能串用批准，全撤销生效 |
 | 34949906969 | GitHub Actions | M3超时 | done | 11项通过：超时请求无法继续批准，不生成会话 |
 | 34950601179 | GitHub Actions | M3/M5正式包 | done | 11项通过；release包完整性、CLI和dev隔离通过；已检查截图但白屏，继续诊断 |
-| 34952456878 | GitHub Actions | M5启动截图 | running | 等待5秒后截图，需下载检查；包含图片隐私修复，不包含本地暂停通知修复 |
-| 34952976122 | GitHub Actions | M3/M4/M5回归 | running | desktop已通过；包含暂停通知与格式拒绝/保留原值；release正在构建，完成后下载截图；watch pid 80482 |
+| 34952456878 | GitHub Actions | M5启动截图 | superseded | API仍显示queued，但取消接口称已完成；已用后续运行验证相同代码，不再反复取消 |
+| 34952976122 | GitHub Actions | M3/M4/M5回归 | done | 11项桌面和37项Rust通过，3项ignored；release完整性/隔离通过，5秒截图不再白屏但卡片溢出；日志/tmp/passvalet-release-second.log |
+| 34954128893 | GitHub Actions | M5选项布局 | running | 包含多行env、标题/网址脱敏、选项换行；需要下载检查setup-option-1/2和正式包截图 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |
