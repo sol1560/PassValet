@@ -229,7 +229,7 @@ impl Runner {
             RunOutcome::Failed { .. } | RunOutcome::Partial { .. }
         );
         if let Err(e) = self.executor.session_end(&req.run_id, keep_tabs).await {
-            tracing::warn!("session_end failed: {e}");
+            tracing::warn!("session_end failed: {}", redact::redact(&e.to_string()));
         }
         self.emit(RunEvent::Finished {
             run_id: req.run_id.clone(),
@@ -271,7 +271,7 @@ impl Runner {
             Err(ExecutorError::Aborted) => return RunOutcome::Aborted,
             Err(e) => {
                 return RunOutcome::Failed {
-                    reason: format!("could not open browser tab: {e}"),
+                    reason: redact::redact(&format!("could not open browser tab: {e}")),
                 }
             }
         };
@@ -378,7 +378,8 @@ impl Runner {
 
                 match tc.name.as_str() {
                     tools::DONE => {
-                        let summary = tc.arguments["summary"].as_str().unwrap_or("").to_string();
+                        let summary =
+                            redact::redact(tc.arguments["summary"].as_str().unwrap_or(""));
                         let missing: Vec<String> = wanted
                             .iter()
                             .filter(|k| !captured.contains(k))
@@ -399,12 +400,13 @@ impl Runner {
                         break;
                     }
                     tools::FAIL => {
-                        let reason = tc.arguments["reason"].as_str().unwrap_or("").to_string();
+                        let reason = redact::redact(tc.arguments["reason"].as_str().unwrap_or(""));
                         terminal = Some(self.partial(&captured, &wanted, reason));
                         break;
                     }
                     tools::NEED_USER => {
-                        let message = tc.arguments["message"].as_str().unwrap_or("").to_string();
+                        let message =
+                            redact::redact(tc.arguments["message"].as_str().unwrap_or(""));
                         // Register before publishing the pause so an immediate reply is not lost.
                         let resume = self.control.resume.clone();
                         let notified = resume.notified();
@@ -504,6 +506,7 @@ impl Runner {
                             Err(ExecutorError::Aborted) => return RunOutcome::Aborted,
                             Err(e) => (format!("capture failed: {e}"), true),
                         };
+                        let text = redact::redact(&text);
                         if is_error {
                             step_had_error = true;
                         }
@@ -545,7 +548,7 @@ impl Runner {
                             }
                             Err(ExecutorError::Aborted) => return RunOutcome::Aborted,
                             Err(e) => {
-                                let t = format!("{e}");
+                                let t = redact::redact(&e.to_string());
                                 (vec![ContentPart::Text(t.clone())], t, true)
                             }
                         };

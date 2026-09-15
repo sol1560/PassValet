@@ -49,7 +49,7 @@ export async function collectionFixture() {
         args = { summary: '测试：没有捕获任何新密钥' };
       } else if (step === 'user') {
         name = 'need_user';
-        args = { message: '测试：请在浏览器完成登录后继续' };
+        args = { message: `测试：请在浏览器完成登录后继续（示例 ghp_${'A1'.repeat(20)}）` };
       } else if (step === 'read') {
         name = 'read_page';
         args = { filter: 'interactive' };

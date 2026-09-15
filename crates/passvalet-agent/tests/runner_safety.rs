@@ -71,6 +71,76 @@ impl BrowserExecutor for BrowserWithPrivateImage {
 
 struct NoStore;
 
+struct FailingBrowser {
+    fail_start: bool,
+    message: String,
+}
+
+#[async_trait]
+impl BrowserExecutor for FailingBrowser {
+    async fn session_begin(&self, _: &str, _: &str) -> Result<String, ExecutorError> {
+        if self.fail_start {
+            Err(ExecutorError::Failed(self.message.clone()))
+        } else {
+            Ok("1".into())
+        }
+    }
+    async fn call(&self, _: &str, _: &str, _: Value) -> Result<ToolOutput, ExecutorError> {
+        Err(ExecutorError::Failed(self.message.clone()))
+    }
+    async fn session_end(&self, _: &str, _: bool) -> Result<(), ExecutorError> {
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn browser_errors_do_not_expose_tokens_to_events_or_the_model() {
+    let token = format!("ghp_{}", "B2".repeat(20));
+    for stage in ["start", "read", "capture"] {
+        let recording = Arc::new(RecordingProvider::default());
+        let provider: Arc<dyn LlmProvider> = if stage == "capture" {
+            Arc::new(CapturingProvider("api_key"))
+        } else {
+            recording.clone()
+        };
+        let (events, mut receiver) = mpsc::channel(16);
+        let outcome = Runner {
+            provider,
+            executor: Arc::new(FailingBrowser {
+                fail_start: stage == "start",
+                message: format!("页面出错 https://example.test/?token={token}"),
+            }),
+            sink: Arc::new(NoStore),
+            events,
+            control: RunControl::default(),
+            ladder: ModelLadder::new(vec!["test".into()]),
+            max_tokens: 100,
+        }
+        .run(RunRequest {
+            run_id: "error-privacy".into(),
+            service: "openai".into(),
+            kind: RunKind::Collect {
+                key_types: vec!["api_key".into()],
+            },
+            playbook: PlaybookSet::builtin().get("openai").unwrap().clone(),
+            hints: vec![],
+        })
+        .await;
+        let mut output = serde_json::to_string(&outcome).unwrap();
+        while let Ok(event) = receiver.try_recv() {
+            output.push_str(&serde_json::to_string(&event).unwrap());
+        }
+        if stage == "read" {
+            let requests = recording.requests.lock().unwrap();
+            assert_eq!(requests.len(), 2);
+            output.push_str(&serde_json::to_string(&requests[1].messages).unwrap());
+        }
+        assert!(!output.contains(&token), "{stage} leaked an error token");
+        assert!(output.contains("页面出错"));
+        assert!(output.contains("REDACTED"));
+    }
+}
+
 #[async_trait]
 impl SecretSink for NoStore {
     async fn store(
@@ -145,6 +215,85 @@ async fn rotation_without_a_safe_revocation_path_never_operates_the_browser() {
 }
 
 struct PausingProvider;
+
+struct UntrustedTextProvider {
+    tool: &'static str,
+    text: String,
+}
+
+#[async_trait]
+impl LlmProvider for UntrustedTextProvider {
+    async fn complete(&self, _: &CompletionRequest) -> Result<CompletionResponse, ProviderError> {
+        Ok(CompletionResponse {
+            tool_calls: vec![ToolCall {
+                id: "untrusted-text".into(),
+                name: self.tool.into(),
+                arguments: json!({ "message": self.text, "summary": self.text, "reason": self.text }),
+            }],
+            ..Default::default()
+        })
+    }
+
+    fn kind(&self) -> ProviderKind {
+        ProviderKind::OpenaiCompat
+    }
+}
+
+#[tokio::test]
+async fn model_status_text_does_not_expose_known_tokens() {
+    let token = format!("ghp_{}", "A1".repeat(20));
+    for tool in ["need_user", "done", "fail"] {
+        let (events, mut receiver) = mpsc::channel(16);
+        let control = RunControl::default();
+        let task = tokio::spawn(
+            Runner {
+                provider: Arc::new(UntrustedTextProvider {
+                    tool,
+                    text: format!("请检查 {token} 后继续"),
+                }),
+                executor: Arc::new(BrowserWithPrivateImage),
+                sink: Arc::new(NoStore),
+                events,
+                control: control.clone(),
+                ladder: ModelLadder::new(vec!["test".into()]),
+                max_tokens: 100,
+            }
+            .run(RunRequest {
+                run_id: "status-text".into(),
+                service: "openai".into(),
+                kind: RunKind::Collect {
+                    key_types: vec!["api_key".into()],
+                },
+                playbook: PlaybookSet::builtin().get("openai").unwrap().clone(),
+                hints: vec![],
+            }),
+        );
+        let mut output = String::new();
+        tokio::time::timeout(std::time::Duration::from_secs(1), async {
+            while let Some(event) = receiver.recv().await {
+                output.push_str(&serde_json::to_string(&event).unwrap());
+                if matches!(event, RunEvent::NeedUser { .. }) {
+                    control.abort();
+                }
+            }
+        })
+        .await
+        .unwrap();
+        output.push_str(&serde_json::to_string(&task.await.unwrap()).unwrap());
+        assert!(
+            !output.contains(&token),
+            "{tool} leaked a token into events or its outcome"
+        );
+        assert!(
+            output.contains("请检查"),
+            "preserve useful surrounding text"
+        );
+        assert!(
+            output.contains("REDACTED"),
+            "show that the sensitive part was hidden"
+        );
+    }
+}
 
 struct NeverReplies(tokio::sync::Notify);
 

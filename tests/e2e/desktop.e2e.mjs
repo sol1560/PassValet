@@ -362,6 +362,9 @@ describe('真实桌面与MCP', () => {
       await $('button=在浏览器中开始采集 采集测试').click();
       await $('button=我已完成，继续').waitForDisplayed();
       assert.ok((await $('.notice').getText()).includes('完成登录后继续'));
+      assert.ok((await $('.notice').getText()).includes('REDACTED'));
+      assert.equal((await $('body').getText()).includes(`ghp_${'A1'.repeat(20)}`), false,
+        '模型返回的说明和任务日志不能显示完整示例令牌');
       await browser.saveScreenshot('test-results/collection-waiting.png');
       assert.equal(fixture.requestCount, 1, '用户继续之前不应再请求模型');
       const beforeResume = await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
