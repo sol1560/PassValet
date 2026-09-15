@@ -17,6 +17,7 @@
 | 34949906969 | GitHub Actions | M3超时 | done | 11项通过：超时请求无法继续批准，不生成会话 |
 | 34950601179 | GitHub Actions | M3/M5正式包 | done | 11项通过；release包完整性、CLI和dev隔离通过；已检查截图但白屏，继续诊断 |
 | 34952456878 | GitHub Actions | M5启动截图 | running | 等待5秒后截图，需下载检查；包含图片隐私修复，不包含本地暂停通知修复 |
+| 34952976122 | GitHub Actions | M3/M4/M5回归 | running | desktop已通过；包含暂停通知与格式拒绝/保留原值；release正在构建，完成后下载截图；watch pid 80482 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |

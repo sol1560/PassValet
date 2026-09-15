@@ -327,20 +327,49 @@ pub fn merge_env_file(path: &Path, values: &BTreeMap<String, String>) -> Result<
     };
     let mut remaining = values.clone();
     let mut lines: Vec<String> = Vec::new();
-    for line in existing.lines() {
+    let mut input = existing.lines();
+    while let Some(line) = input.next() {
         let trimmed = line.trim_start();
-        let key = trimmed
+        let assignment = trimmed
             .strip_prefix("export ")
             .unwrap_or(trimmed)
-            .split('=')
-            .next()
-            .map(|k| k.trim().to_string());
-        match key {
-            Some(k) if values.contains_key(&k) && !trimmed.starts_with('#') => {
-                remaining.remove(&k);
-                lines.push(format!("{k}={}", quote_env(&values[&k])));
+            .split_once('=')
+            .filter(|_| !trimmed.starts_with('#'));
+        let mut record = line.to_string();
+        if let Some((_, value)) = assignment {
+            let value = value.trim_start();
+            if let Some(quote) = value.chars().next().filter(|c| *c == '\'' || *c == '"') {
+                let mut rest = &value[1..];
+                loop {
+                    let mut escaped = false;
+                    let mut closed = false;
+                    for c in rest.chars() {
+                        if escaped {
+                            escaped = false;
+                        } else if c == quote {
+                            closed = true;
+                            break;
+                        } else if c == '\\' && quote == '"' {
+                            escaped = true;
+                        }
+                    }
+                    if closed {
+                        break;
+                    }
+                    rest = input
+                        .next()
+                        .context("unterminated quoted env value; nothing was written")?;
+                    record.push('\n');
+                    record.push_str(rest);
+                }
             }
-            _ => lines.push(line.to_string()),
+        }
+        match assignment.map(|(key, _)| key.trim()) {
+            Some(k) if values.contains_key(k) => {
+                remaining.remove(k);
+                lines.push(format!("{k}={}", quote_env(&values[k])));
+            }
+            _ => lines.push(record),
         }
     }
     if !remaining.is_empty() {
@@ -455,6 +484,34 @@ pub fn config_path(dir: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn merge_handles_quoted_multiline_values_without_editing_their_contents() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".env");
+        std::fs::write(
+            &path,
+            "NOTE='first\nTOKEN=inside-note\nlast'\nTOKEN=\"old\nvalue\"\nTOKEN\nOTHER=keep\n",
+        )
+        .unwrap();
+        merge_env_file(
+            &path,
+            &BTreeMap::from([("TOKEN".into(), "replacement".into())]),
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&path).unwrap(),
+            "NOTE='first\nTOKEN=inside-note\nlast'\nTOKEN=replacement\nTOKEN\nOTHER=keep\n"
+        );
+        let incomplete = "TOKEN=\"unfinished\nOTHER=keep\n";
+        std::fs::write(&path, incomplete).unwrap();
+        assert!(merge_env_file(
+            &path,
+            &BTreeMap::from([("TOKEN".into(), "replacement".into())])
+        )
+        .is_err());
+        assert_eq!(std::fs::read_to_string(path).unwrap(), incomplete);
+    }
 
     #[test]
     fn merge_updates_duplicate_definitions() {
