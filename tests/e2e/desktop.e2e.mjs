@@ -1,35 +1,15 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { renameSync, statSync } from 'node:fs';
-import { createConnection } from 'node:net';
 import path from 'node:path';
 import { browser, $ } from '@wdio/globals';
 import { McpClient, body } from './mcp-client.mjs';
 import { openExtension } from './chrome-extension.mjs';
+import { ipcCall } from '../ipc-client.mjs';
 
 const secret = 'passvalet-e2e-only-not-a-real-api-key';
 let mcp;
 let mainWindow;
-
-function ipcCall(method, params) {
-  return new Promise((resolve, reject) => {
-    let data = '';
-    const socket = createConnection(process.env.PASSVALET_SOCKET, () => {
-      socket.write(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })}\n`);
-    });
-    socket.setEncoding('utf8');
-    socket.setTimeout(10_000, () => socket.destroy(new Error('本地请求测试响应超时')));
-    socket.on('error', reject);
-    socket.on('end', () => reject(new Error('本地请求测试连接提前结束')));
-    socket.on('data', (chunk) => {
-      data += chunk;
-      if (!data.includes('\n')) return;
-      try { resolve(JSON.parse(data.slice(0, data.indexOf('\n')))); }
-      catch (error) { reject(error); }
-      finally { socket.destroy(); }
-    });
-  });
-}
 
 describe('真实桌面与MCP', () => {
   after(() => mcp?.close());
@@ -117,7 +97,7 @@ describe('真实桌面与MCP', () => {
     const chrome = await openExtension();
     try {
       await $('span=扩展已连接').waitForDisplayed();
-      const response = await ipcCall('ext.event', { kind: 'user_aborted', run_id: 'unrelated-peer-test' });
+      const response = await ipcCall(process.env.PASSVALET_SOCKET, 'ext.event', { kind: 'user_aborted', run_id: 'unrelated-peer-test' });
       assert.equal(response.error?.data?.code, 'not_extension');
     } finally {
       await chrome.deleteSession();
@@ -265,7 +245,7 @@ describe('真实桌面与MCP', () => {
   });
 
   it('timed-out-request-cannot-be-approved-later', async () => {
-    const pending = ipcCall('request_permissions', {
+    const pending = ipcCall(process.env.PASSVALET_SOCKET, 'request_permissions', {
       manifest: { agent: { name: 'timeout-test' }, purpose: '测试过期后拒绝批准',
         requests: [{ service: 'e2e', key_type: 'api_key', access: 'read' }] },
       wait_seconds: 3,
