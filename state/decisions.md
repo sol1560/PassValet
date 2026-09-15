@@ -33,3 +33,9 @@
 - Vercel当前创建入口为https://vercel.com/account/tokens；官方支持账户、团队、项目三种范围，不能把文档核对当成真实账号验证。来源：https://vercel.com/changelog/new-token-formats-and-secret-scanning 、https://vercel.com/docs/accounts/access-tokens 。
 - Anthropic当前控制台为https://platform.claude.com/，API key页面为https://platform.claude.com/settings/keys；同步登记页与采集入口，避免旧主机跳转触发网站限制。来源：https://platform.claude.com/docs/en/get-api-key 。
 - 采集页面原有“永远看不到key”承诺过强，改为说明按已知格式隐藏仍可能遗漏；新文案需随下一轮真实macOS截图检查。
+
+## 安全轮换尚未完成
+
+- 先在Runner入口拒绝Rotate；不能只凭网页提示词允许删除，也不能把此保护当成轮换完成。恢复自动执行前必须有受程序控制的创建、持久保存、精确撤销路径。
+- OpenAI官方已有服务账号密钥创建端点 `POST /organization/projects/{project_id}/service_accounts/{service_account_id}/api_keys`，返回完整value和唯一id，支持scopes和expires_in_seconds；示例使用OPENAI_ADMIN_KEY。它是后续候选方式，不是已实现或已获管理权限。不能把ZenMux模型调用凭据用于服务管理。
+- 来源：https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/projects/subresources/service_accounts/subresources/api_keys/methods/create 。当前没有调用此接口，没有创建或撤销真实资源。

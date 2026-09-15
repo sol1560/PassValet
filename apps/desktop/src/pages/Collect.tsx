@@ -108,7 +108,7 @@ function RunCard({ run, onChanged }: { run: RunInfo; onChanged: () => void }) {
 
   const needUser = [...events].reverse().find((e) => e.type === "need_user");
   const lastStepIdx = events.map((e) => e.type).lastIndexOf("step");
-  const waiting = needUser && events.indexOf(needUser) > lastStepIdx - 1 && !run.finished;
+  const waiting = needUser && events.indexOf(needUser) >= lastStepIdx - 1 && !run.finished;
   const captured = events.filter((e) => e.type === "captured");
   const kind = run.kind.kind === "collect" ? `采集 ${run.kind.key_types.join(", ")}` : `轮换 ${run.kind.key_type}`;
 

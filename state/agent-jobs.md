@@ -31,6 +31,7 @@
 | 34962867609 | GitHub Actions | M4/M5失败复现 | done | 全库fmt/clippy通过；12项桌面通过，轮换返回rotated而非failed已复现；随后设置测试因bail未执行。watch进程189753已结束 |
 | 34963420759 | GitHub Actions | M4修复/M5设置复现 | done | 13项桌面通过；设置保存失败后内存值变成31而非30已复现；watch进程193621已结束 |
 | 34964063115 | GitHub Actions | M5设置/剪贴板/Intel | done | 16项桌面、ARM64及Intel正式包全部通过；两种架构启动截图已检查；watch进程196636 |
+| 34966972222 | GitHub Actions | M4轮换保护/M5安装删除 | done | 真实Claude注册通过；12项桌面通过，等待时继续按钮消失已复现；失败截图已检查，watch进程226518 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |
