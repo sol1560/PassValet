@@ -130,7 +130,7 @@ p.muted, span.muted, .muted { color: var(--muted); }
 .center { display: flex; align-items: center; justify-content: center; height: 100%; }
 .onboard { max-width: 520px; width: 100%; }
 .choice { display: flex; gap: 12px; }
-.choice button { flex: 1; text-align: left; padding: 14px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px; }
+.choice button { flex: 1; min-width: 0; white-space: normal; text-align: left; padding: 14px; border-radius: 12px; display: flex; flex-direction: column; gap: 4px; }
 .choice button strong { font-size: 14px; }
 .choice button span { color: var(--muted); font-size: 12px; }
 .choice button.selected { border-color: var(--accent); background: rgba(109,92,255,.12); }
