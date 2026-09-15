@@ -16,6 +16,7 @@ const PATTERNS: &[&str] = &[
     r"ghp_[A-Za-z0-9]{30,}",
     r"gho_[A-Za-z0-9]{30,}",
     r"github_pat_[A-Za-z0-9_]{40,}",
+    r"vc[piark]_[A-Za-z0-9_-]+",
     r"AKIA[A-Z0-9]{16}",
     r"AIza[A-Za-z0-9_-]{30,}",
     r"re_[A-Za-z0-9_]{20,}",
@@ -84,6 +85,16 @@ pub fn contains_secret(text: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn vercel_prefixes_are_masked_without_nearby_keywords() {
+        for prefix in ["vcp", "vci", "vca", "vcr", "vck"] {
+            let token = format!("{prefix}_{}", "A1".repeat(12));
+            let masked = redact(&format!("value={token}"));
+            assert!(!masked.contains(&token));
+            assert!(masked.contains("REDACTED"));
+        }
+    }
 
     #[test]
     fn redacts_known_shapes() {

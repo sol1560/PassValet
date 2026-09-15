@@ -38,7 +38,7 @@ export default function Collect({ info, extensionConnected }: { info: VaultInfo;
         <div>
           <h1>自动采集</h1>
           <p className="muted" style={{ margin: 0 }}>
-            在你已登录的 Chrome 里打开控制台，由模型导航到 API key 页面并把 key 直接存入保险库。模型只看到脱敏后的页面，永远看不到 key 本身。
+            在你已登录的 Chrome 里采集 API key，直接存入本机保险库。模型会读取隐藏了已知密钥格式的网页文字，但规则可能漏掉其他敏感内容，请勿在采集页面放置无关的隐私信息。
           </p>
         </div>
       </div>

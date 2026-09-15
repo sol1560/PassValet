@@ -2,6 +2,16 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { Executor } from '../apps/extension/src/executor.ts';
+import { redact } from '../apps/extension/src/redact.ts';
+
+test('Vercel新令牌即使没有邻近说明也应隐藏', () => {
+  for (const prefix of ['vcp', 'vci', 'vca', 'vcr', 'vck']) {
+    const token = `${prefix}_${'A1'.repeat(12)}`;
+    const output = redact(`value=${token}`);
+    assert.equal(output.includes(token), false);
+    assert.ok(output.includes('REDACTED'));
+  }
+});
 
 test('网页确认和输入弹窗不能被自动同意', () => {
   let onDialog;
