@@ -40,7 +40,9 @@ try {
   assert.equal(after.result?.vault.initialized, false);
   assert.equal(readdirSync(home).some((name) => /^dev-kek.*\.bin$/.test(name)), false);
   mkdirSync('test-results', { recursive: true });
-  await delay(500);
+  // 通信启动不代表 WKWebView 已完成首次绘制；截图仍需单独检查。
+  await delay(5000);
+  assert.equal(app.exitCode, null, '等待页面绘制时应用不应退出');
   execFileSync('/usr/sbin/screencapture', ['-x', 'test-results/release-startup.png']);
   console.log('PASS: bundled CLI runs; release app starts; dev commands rejected; no dev key file');
 } finally {
