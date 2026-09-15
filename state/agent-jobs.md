@@ -42,6 +42,7 @@
 | 34979027472 | GitHub Actions | M3/M5提示隐藏、键盘和最小窗口 | done | 18项通过、键盘检查失败；驱动只合成事件。watch进程262766已结束；最小窗口未执行 |
 | 34980422186 | GitHub Actions | M5原生键盘和最小窗口 | done | 20项桌面及双架构包通过，两种启动截图已检查；watch进程263648已结束 |
 | 34982392762 | GitHub Actions | M5小窗口日志列宽修复 | done | 20项桌面及双架构包通过；日志和两种启动截图已检查；两套下载包校验值均通过；watch进程265850已结束 |
+| 34985298436 | GitHub Actions | M4采集权限指引修正 | running | 桌面20 passing (1m 58.3s)，ARM64包通过；watch进程272732，输出/tmp/passvalet-scope-watch.log |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |
