@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { renameSync, statSync } from 'node:fs';
+import { createConnection } from 'node:net';
 import path from 'node:path';
 import { browser, $ } from '@wdio/globals';
 import { McpClient, body } from './mcp-client.mjs';
@@ -96,6 +97,25 @@ describe('真实桌面与MCP', () => {
     const chrome = await openExtension();
     try {
       await $('span=扩展已连接').waitForDisplayed();
+      const response = await new Promise((resolve, reject) => {
+        let data = '';
+        const socket = createConnection(process.env.PASSVALET_SOCKET, () => {
+          socket.write(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ext.event',
+            params: { kind: 'user_aborted', run_id: 'unrelated-peer-test' } })}\n`);
+        });
+        socket.setEncoding('utf8');
+        socket.setTimeout(5000, () => socket.destroy(new Error('扩展事件测试响应超时')));
+        socket.on('error', reject);
+        socket.on('end', () => reject(new Error('扩展事件测试连接提前结束')));
+        socket.on('data', (chunk) => {
+          data += chunk;
+          if (!data.includes('\n')) return;
+          try { resolve(JSON.parse(data.slice(0, data.indexOf('\n')))); }
+          catch (error) { reject(error); }
+          finally { socket.destroy(); }
+        });
+      });
+      assert.equal(response.error?.data?.code, 'not_extension');
     } finally {
       await chrome.deleteSession();
     }
