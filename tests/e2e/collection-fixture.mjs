@@ -40,13 +40,16 @@ export async function collectionFixture() {
       const tools = body.messages.filter((message) => message.role === 'tool');
       requests++;
       const step = incomplete ? 'incomplete' : (copyMode
-        ? ['read', 'reveal', 'read', 'copy', 'clipboard', 'done']
+        ? ['user', 'read', 'reveal', 'read', 'copy', 'clipboard', 'done']
         : ['read', 'element', 'done'])[requests - 1];
       let name;
       let args;
       if (step === 'incomplete') {
         name = 'done';
         args = { summary: '测试：没有捕获任何新密钥' };
+      } else if (step === 'user') {
+        name = 'need_user';
+        args = { message: '测试：请在浏览器完成登录后继续' };
       } else if (step === 'read') {
         name = 'read_page';
         args = { filter: 'interactive' };
@@ -110,9 +113,10 @@ instructions = "This local test only checks incomplete outcomes. Do not delete a
     stall() { stalled = true; },
     finishWithoutCapture() { incomplete = true; stalled = false; requests = 0; },
     get modelWaiting() { return modelWaiting; },
+    get requestCount() { return requests; },
     verify(value) {
       if (failure) throw failure;
-      assert.equal(requests, copyMode ? 6 : 3);
+      assert.equal(requests, copyMode ? 7 : 3);
       assert.ok(value === secret, '保存后读回的值必须与网页测试值完全一致');
     },
     async close() {

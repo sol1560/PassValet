@@ -360,6 +360,15 @@ describe('真实桌面与MCP', () => {
       const firstRun = run.run_id;
       fixture.copyOnce();
       await $('button=在浏览器中开始采集 采集测试').click();
+      await $('button=我已完成，继续').waitForDisplayed();
+      assert.ok((await $('.notice').getText()).includes('完成登录后继续'));
+      await browser.saveScreenshot('test-results/collection-waiting.png');
+      assert.equal(fixture.requestCount, 1, '用户继续之前不应再请求模型');
+      const beforeResume = await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
+        service: 'collection_test', keyType: 'api_key',
+      }));
+      assert.ok(beforeResume === value, '暂停期间原密钥仍然可用');
+      await $('button=我已完成，继续').click();
       await browser.waitUntil(async () => {
         const runs = await browser.tauri.execute(({ core }) => core.invoke('list_runs'));
         run = runs.find((r) => r.service === 'collection_test' && r.run_id !== firstRun);
