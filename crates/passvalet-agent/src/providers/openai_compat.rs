@@ -76,12 +76,16 @@ impl OpenAiCompat {
                         if r.is_error && !text.starts_with("ERROR") {
                             text = format!("ERROR: {text}");
                         }
-                        out.push(json!({ "role": "tool", "tool_call_id": r.call_id, "content": text }));
+                        out.push(
+                            json!({ "role": "tool", "tool_call_id": r.call_id, "content": text }),
+                        );
                     }
                     let mut parts: Vec<Value> = Vec::new();
                     for c in &m.content {
                         match c {
-                            ContentPart::Text(t) => parts.push(json!({ "type": "text", "text": t })),
+                            ContentPart::Text(t) => {
+                                parts.push(json!({ "type": "text", "text": t }))
+                            }
                             ContentPart::Image { media_type, data } => parts.push(json!({
                                 "type": "image_url",
                                 "image_url": { "url": format!("data:{media_type};base64,{data}") }
@@ -145,13 +149,16 @@ impl LlmProvider for OpenAiCompat {
                 body: crate::redact::redact(&text).chars().take(2000).collect(),
             });
         }
-        let v: Value = serde_json::from_str(&text)
-            .map_err(|e| ProviderError::Malformed(e.to_string()))?;
+        let v: Value =
+            serde_json::from_str(&text).map_err(|e| ProviderError::Malformed(e.to_string()))?;
         let choice = v["choices"]
             .get(0)
             .ok_or_else(|| ProviderError::Malformed("no choices".into()))?;
         let msg = &choice["message"];
-        let content = msg["content"].as_str().map(|s| s.to_string()).filter(|s| !s.trim().is_empty());
+        let content = msg["content"]
+            .as_str()
+            .map(|s| s.to_string())
+            .filter(|s| !s.trim().is_empty());
         let mut tool_calls = Vec::new();
         if let Some(arr) = msg["tool_calls"].as_array() {
             for (i, tc) in arr.iter().enumerate() {

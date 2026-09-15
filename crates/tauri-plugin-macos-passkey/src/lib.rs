@@ -139,7 +139,10 @@ async fn login_passkey<R: tauri::Runtime>(
 }
 
 #[tauri::command]
-async fn touch_id_authenticate(reason: String, allow_password: Option<bool>) -> Result<bool, String> {
+async fn touch_id_authenticate(
+    reason: String,
+    allow_password: Option<bool>,
+) -> Result<bool, String> {
     touch_id(&reason, allow_password.unwrap_or(true))
         .await
         .map_err(|e| e.to_string())

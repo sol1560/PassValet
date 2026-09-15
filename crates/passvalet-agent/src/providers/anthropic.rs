@@ -114,8 +114,8 @@ impl LlmProvider for AnthropicMessages {
                 body: crate::redact::redact(&text).chars().take(2000).collect(),
             });
         }
-        let v: Value = serde_json::from_str(&text)
-            .map_err(|e| ProviderError::Malformed(e.to_string()))?;
+        let v: Value =
+            serde_json::from_str(&text).map_err(|e| ProviderError::Malformed(e.to_string()))?;
         let mut texts = Vec::new();
         let mut tool_calls = Vec::new();
         for b in v["content"].as_array().cloned().unwrap_or_default() {
@@ -134,7 +134,11 @@ impl LlmProvider for AnthropicMessages {
             }
         }
         Ok(CompletionResponse {
-            text: if texts.is_empty() { None } else { Some(texts.join("\n")) },
+            text: if texts.is_empty() {
+                None
+            } else {
+                Some(texts.join("\n"))
+            },
             tool_calls,
             usage: Usage {
                 input_tokens: v["usage"]["input_tokens"].as_u64().unwrap_or(0),

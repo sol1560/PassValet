@@ -31,8 +31,13 @@ async fn tool_call_roundtrip(cfg: ProviderConfig) {
         resp.text
     );
     let names: Vec<&str> = resp.tool_calls.iter().map(|t| t.name.as_str()).collect();
-    println!("{} -> {:?} (in {} / out {})", cfg.models[0], names, resp.usage.input_tokens, resp.usage.output_tokens);
-    assert!(names.iter().any(|n| *n == "read_page" || *n == "find" || *n == "screenshot" || *n == "get_page_text"));
+    println!(
+        "{} -> {:?} (in {} / out {})",
+        cfg.models[0], names, resp.usage.input_tokens, resp.usage.output_tokens
+    );
+    assert!(names
+        .iter()
+        .any(|n| *n == "read_page" || *n == "find" || *n == "screenshot" || *n == "get_page_text"));
 }
 
 #[tokio::test]

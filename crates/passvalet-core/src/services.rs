@@ -95,10 +95,42 @@ pub static SERVICES: &[ServiceDef] = &[
         label: "Supabase",
         dashboard_url: "https://supabase.com/dashboard/projects",
         key_types: &[
-            kt!("url", "Project URL", "项目 URL", "NEXT_PUBLIC_SUPABASE_URL", false, Some(r"^https://[a-z0-9-]+\.supabase\.co$")),
-            kt!("anon_key", "anon / publishable key", "anon 公钥", "NEXT_PUBLIC_SUPABASE_ANON_KEY", false, Some(r"^(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}|sb_publishable_[A-Za-z0-9_-]{20,})$")),
-            kt!("service_role_key", "service_role / secret key", "service_role 私钥", "SUPABASE_SERVICE_ROLE_KEY", true, Some(r"^(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}|sb_secret_[A-Za-z0-9_-]{20,})$")),
-            kt!("db_password", "Database password", "数据库密码", "SUPABASE_DB_PASSWORD", true, None),
+            kt!(
+                "url",
+                "Project URL",
+                "项目 URL",
+                "NEXT_PUBLIC_SUPABASE_URL",
+                false,
+                Some(r"^https://[a-z0-9-]+\.supabase\.co$")
+            ),
+            kt!(
+                "anon_key",
+                "anon / publishable key",
+                "anon 公钥",
+                "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+                false,
+                Some(
+                    r"^(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}|sb_publishable_[A-Za-z0-9_-]{20,})$"
+                )
+            ),
+            kt!(
+                "service_role_key",
+                "service_role / secret key",
+                "service_role 私钥",
+                "SUPABASE_SERVICE_ROLE_KEY",
+                true,
+                Some(
+                    r"^(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}|sb_secret_[A-Za-z0-9_-]{20,})$"
+                )
+            ),
+            kt!(
+                "db_password",
+                "Database password",
+                "数据库密码",
+                "SUPABASE_DB_PASSWORD",
+                true,
+                None
+            ),
         ],
     },
     ServiceDef {
@@ -106,93 +138,191 @@ pub static SERVICES: &[ServiceDef] = &[
         label: "Stripe",
         dashboard_url: "https://dashboard.stripe.com/apikeys",
         key_types: &[
-            kt!("publishable_key", "Publishable key", "可公开密钥", "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY", false, Some(r"^pk_(test|live)_[A-Za-z0-9]{20,}$")),
-            kt!("secret_key", "Secret key", "私密密钥", "STRIPE_SECRET_KEY", true, Some(r"^(sk|rk)_(test|live)_[A-Za-z0-9]{20,}$")),
-            kt!("webhook_secret", "Webhook signing secret", "Webhook 签名密钥", "STRIPE_WEBHOOK_SECRET", true, Some(r"^whsec_[A-Za-z0-9]{20,}$")),
+            kt!(
+                "publishable_key",
+                "Publishable key",
+                "可公开密钥",
+                "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+                false,
+                Some(r"^pk_(test|live)_[A-Za-z0-9]{20,}$")
+            ),
+            kt!(
+                "secret_key",
+                "Secret key",
+                "私密密钥",
+                "STRIPE_SECRET_KEY",
+                true,
+                Some(r"^(sk|rk)_(test|live)_[A-Za-z0-9]{20,}$")
+            ),
+            kt!(
+                "webhook_secret",
+                "Webhook signing secret",
+                "Webhook 签名密钥",
+                "STRIPE_WEBHOOK_SECRET",
+                true,
+                Some(r"^whsec_[A-Za-z0-9]{20,}$")
+            ),
         ],
     },
     ServiceDef {
         id: "openai",
         label: "OpenAI",
         dashboard_url: "https://platform.openai.com/api-keys",
-        key_types: &[
-            kt!("api_key", "API key", "API 密钥", "OPENAI_API_KEY", true, Some(r"^sk-[A-Za-z0-9_-]{20,}$")),
-        ],
+        key_types: &[kt!(
+            "api_key",
+            "API key",
+            "API 密钥",
+            "OPENAI_API_KEY",
+            true,
+            Some(r"^sk-[A-Za-z0-9_-]{20,}$")
+        )],
     },
     ServiceDef {
         id: "anthropic",
         label: "Anthropic",
         dashboard_url: "https://platform.claude.com/settings/keys",
-        key_types: &[
-            kt!("api_key", "API key", "API 密钥", "ANTHROPIC_API_KEY", true, Some(r"^sk-ant-[A-Za-z0-9_-]{20,}$")),
-        ],
+        key_types: &[kt!(
+            "api_key",
+            "API key",
+            "API 密钥",
+            "ANTHROPIC_API_KEY",
+            true,
+            Some(r"^sk-ant-[A-Za-z0-9_-]{20,}$")
+        )],
     },
     ServiceDef {
         id: "vercel",
         label: "Vercel",
         dashboard_url: "https://vercel.com/account/tokens",
-        key_types: &[
-            kt!("token", "Access token", "访问令牌", "VERCEL_TOKEN", true, Some(r"^(vcp_[A-Za-z0-9_-]+|[A-Za-z0-9]{24})$")),
-        ],
+        key_types: &[kt!(
+            "token",
+            "Access token",
+            "访问令牌",
+            "VERCEL_TOKEN",
+            true,
+            Some(r"^(vcp_[A-Za-z0-9_-]+|[A-Za-z0-9]{24})$")
+        )],
     },
     ServiceDef {
         id: "cloudflare",
         label: "Cloudflare",
         dashboard_url: "https://dash.cloudflare.com/profile/api-tokens",
         key_types: &[
-            kt!("api_token", "API token", "API 令牌", "CLOUDFLARE_API_TOKEN", true, Some(r"^[A-Za-z0-9_-]{40}$")),
-            kt!("account_id", "Account ID", "账户 ID", "CLOUDFLARE_ACCOUNT_ID", false, Some(r"^[a-f0-9]{32}$")),
+            kt!(
+                "api_token",
+                "API token",
+                "API 令牌",
+                "CLOUDFLARE_API_TOKEN",
+                true,
+                Some(r"^[A-Za-z0-9_-]{40}$")
+            ),
+            kt!(
+                "account_id",
+                "Account ID",
+                "账户 ID",
+                "CLOUDFLARE_ACCOUNT_ID",
+                false,
+                Some(r"^[a-f0-9]{32}$")
+            ),
         ],
     },
     ServiceDef {
         id: "github",
         label: "GitHub",
         dashboard_url: "https://github.com/settings/tokens",
-        key_types: &[
-            kt!("personal_access_token", "Personal access token", "个人访问令牌", "GITHUB_TOKEN", true, Some(r"^(ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{60,})$")),
-        ],
+        key_types: &[kt!(
+            "personal_access_token",
+            "Personal access token",
+            "个人访问令牌",
+            "GITHUB_TOKEN",
+            true,
+            Some(r"^(ghp_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{60,})$")
+        )],
     },
     ServiceDef {
         id: "aws",
         label: "AWS",
         dashboard_url: "https://console.aws.amazon.com/iam/home#/security_credentials",
         key_types: &[
-            kt!("access_key_id", "Access key ID", "访问密钥 ID", "AWS_ACCESS_KEY_ID", false, Some(r"^AKIA[A-Z0-9]{16}$")),
-            kt!("secret_access_key", "Secret access key", "私密访问密钥", "AWS_SECRET_ACCESS_KEY", true, Some(r"^[A-Za-z0-9/+=]{40}$")),
+            kt!(
+                "access_key_id",
+                "Access key ID",
+                "访问密钥 ID",
+                "AWS_ACCESS_KEY_ID",
+                false,
+                Some(r"^AKIA[A-Z0-9]{16}$")
+            ),
+            kt!(
+                "secret_access_key",
+                "Secret access key",
+                "私密访问密钥",
+                "AWS_SECRET_ACCESS_KEY",
+                true,
+                Some(r"^[A-Za-z0-9/+=]{40}$")
+            ),
         ],
     },
     ServiceDef {
         id: "resend",
         label: "Resend",
         dashboard_url: "https://resend.com/api-keys",
-        key_types: &[
-            kt!("api_key", "API key", "API 密钥", "RESEND_API_KEY", true, Some(r"^re_[A-Za-z0-9_]{20,}$")),
-        ],
+        key_types: &[kt!(
+            "api_key",
+            "API key",
+            "API 密钥",
+            "RESEND_API_KEY",
+            true,
+            Some(r"^re_[A-Za-z0-9_]{20,}$")
+        )],
     },
     ServiceDef {
         id: "clerk",
         label: "Clerk",
         dashboard_url: "https://dashboard.clerk.com",
         key_types: &[
-            kt!("publishable_key", "Publishable key", "可公开密钥", "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", false, Some(r"^pk_(test|live)_[A-Za-z0-9]{20,}$")),
-            kt!("secret_key", "Secret key", "私密密钥", "CLERK_SECRET_KEY", true, Some(r"^sk_(test|live)_[A-Za-z0-9]{20,}$")),
+            kt!(
+                "publishable_key",
+                "Publishable key",
+                "可公开密钥",
+                "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+                false,
+                Some(r"^pk_(test|live)_[A-Za-z0-9]{20,}$")
+            ),
+            kt!(
+                "secret_key",
+                "Secret key",
+                "私密密钥",
+                "CLERK_SECRET_KEY",
+                true,
+                Some(r"^sk_(test|live)_[A-Za-z0-9]{20,}$")
+            ),
         ],
     },
     ServiceDef {
         id: "zenmux",
         label: "ZenMux",
         dashboard_url: "https://zenmux.ai/settings/keys",
-        key_types: &[
-            kt!("api_key", "API key", "API 密钥", "ZENMUX_API_KEY", true, Some(r"^sk-[A-Za-z0-9_-]{20,}$")),
-        ],
+        key_types: &[kt!(
+            "api_key",
+            "API key",
+            "API 密钥",
+            "ZENMUX_API_KEY",
+            true,
+            Some(r"^sk-[A-Za-z0-9_-]{20,}$")
+        )],
     },
     ServiceDef {
         id: "google_ai",
         label: "Google AI Studio",
         dashboard_url: "https://aistudio.google.com/apikey",
-        key_types: &[
-            kt!("api_key", "API key", "API 密钥", "GOOGLE_GENERATIVE_AI_API_KEY", true, Some(r"^AIza[A-Za-z0-9_-]{30,}$")),
-        ],
+        key_types: &[kt!(
+            "api_key",
+            "API key",
+            "API 密钥",
+            "GOOGLE_GENERATIVE_AI_API_KEY",
+            true,
+            Some(r"^AIza[A-Za-z0-9_-]{30,}$")
+        )],
     },
 ];
 
@@ -226,7 +356,9 @@ pub fn env_var_for(service: &str, key_type: &str) -> String {
 /// Validate a value against the registry pattern when one exists. Unknown types always pass.
 pub fn value_matches_pattern(service: &str, key_type: &str, value: &str) -> bool {
     match find_key_type(service, key_type).and_then(|k| k.pattern) {
-        Some(p) => regex::Regex::new(p).map(|r| r.is_match(value.trim())).unwrap_or(true),
+        Some(p) => regex::Regex::new(p)
+            .map(|r| r.is_match(value.trim()))
+            .unwrap_or(true),
         None => true,
     }
 }
@@ -234,7 +366,8 @@ pub fn value_matches_pattern(service: &str, key_type: &str, value: &str) -> bool
 pub fn is_valid_id(s: &str) -> bool {
     !s.is_empty()
         && s.len() <= 64
-        && s.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '-')
+        && s.chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '-')
 }
 
 #[cfg(test)]
@@ -244,9 +377,18 @@ mod tests {
     #[test]
     fn vercel_accepts_current_and_legacy_personal_tokens() {
         let suffix = "A1".repeat(12);
-        assert!(value_matches_pattern("vercel", "token", &format!("vcp_{suffix}")));
+        assert!(value_matches_pattern(
+            "vercel",
+            "token",
+            &format!("vcp_{suffix}")
+        ));
         assert!(value_matches_pattern("vercel", "token", &suffix));
-        for invalid in ["vcp_", "vcp_***", "vci_not_a_personal_token", "vcp_token with spaces"] {
+        for invalid in [
+            "vcp_",
+            "vcp_***",
+            "vci_not_a_personal_token",
+            "vcp_token with spaces",
+        ] {
             assert!(!value_matches_pattern("vercel", "token", invalid));
         }
     }
@@ -269,7 +411,11 @@ mod tests {
             "secret_key",
             "sk_test_51Habcdefghijklmnopqrstuvwxyz0123"
         ));
-        assert!(!value_matches_pattern("stripe", "secret_key", "pk_test_123"));
+        assert!(!value_matches_pattern(
+            "stripe",
+            "secret_key",
+            "pk_test_123"
+        ));
         assert!(value_matches_pattern("unknown", "thing", "anything"));
     }
 }

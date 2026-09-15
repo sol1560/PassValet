@@ -148,8 +148,21 @@ pub struct ExtHelloParams {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum ExtEvent {
-    UserAborted { run_id: String },
-    TabClosed { run_id: String, tab_id: String },
-    DebuggerDetached { run_id: String, tab_id: String, reason: String },
-    Log { run_id: Option<String>, level: String, message: String },
+    UserAborted {
+        run_id: String,
+    },
+    TabClosed {
+        run_id: String,
+        tab_id: String,
+    },
+    DebuggerDetached {
+        run_id: String,
+        tab_id: String,
+        reason: String,
+    },
+    Log {
+        run_id: Option<String>,
+        level: String,
+        message: String,
+    },
 }

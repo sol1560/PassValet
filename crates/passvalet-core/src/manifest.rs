@@ -25,13 +25,19 @@ pub fn validate(m: &PermissionManifest) -> CoreResult<()> {
         return Err(CoreError::InvalidManifest("purpose is required".into()));
     }
     if m.purpose.len() > 1000 {
-        return Err(CoreError::InvalidManifest("purpose too long (max 1000 chars)".into()));
+        return Err(CoreError::InvalidManifest(
+            "purpose too long (max 1000 chars)".into(),
+        ));
     }
     if m.requests.is_empty() {
-        return Err(CoreError::InvalidManifest("requests must not be empty".into()));
+        return Err(CoreError::InvalidManifest(
+            "requests must not be empty".into(),
+        ));
     }
     if m.requests.len() > 50 {
-        return Err(CoreError::InvalidManifest("too many requests (max 50)".into()));
+        return Err(CoreError::InvalidManifest(
+            "too many requests (max 50)".into(),
+        ));
     }
     let mut seen = HashSet::new();
     for r in &m.requests {

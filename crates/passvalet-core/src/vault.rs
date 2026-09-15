@@ -99,8 +99,9 @@ impl Vault {
 
     pub fn info(&self) -> CoreResult<VaultInfo> {
         let meta = db::read_meta(&self.conn)?;
-        let secret_count: i64 =
-            self.conn.query_row("SELECT COUNT(*) FROM secrets", [], |r| r.get(0))?;
+        let secret_count: i64 = self
+            .conn
+            .query_row("SELECT COUNT(*) FROM secrets", [], |r| r.get(0))?;
         let now = Utc::now().to_rfc3339();
         let active_session_count: i64 = self.conn.query_row(
             "SELECT COUNT(*) FROM sessions WHERE revoked = 0 AND expires_at > ?1",
@@ -110,7 +111,9 @@ impl Vault {
         Ok(VaultInfo {
             initialized: meta.is_some(),
             locked: self.kek.is_none(),
-            provider: meta.as_ref().and_then(|m| UnlockProviderKind::parse(&m.provider)),
+            provider: meta
+                .as_ref()
+                .and_then(|m| UnlockProviderKind::parse(&m.provider)),
             created_at: meta
                 .as_ref()
                 .and_then(|m| DateTime::parse_from_rfc3339(&m.created_at).ok())
@@ -154,7 +157,14 @@ impl Vault {
             },
         )?;
         self.kek = Some(p.kek);
-        self.audit(AuditEvent::VaultInitialized, None, None, None, None, Some(p.provider.as_str()))?;
+        self.audit(
+            AuditEvent::VaultInitialized,
+            None,
+            None,
+            None,
+            None,
+            Some(p.provider.as_str()),
+        )?;
         Ok(recovery_text)
     }
 
@@ -175,7 +185,14 @@ impl Vault {
             return Err(CoreError::WrongKey);
         }
         self.kek = Some(kek);
-        self.audit(AuditEvent::VaultUnlocked, None, None, None, None, Some(&meta.provider))?;
+        self.audit(
+            AuditEvent::VaultUnlocked,
+            None,
+            None,
+            None,
+            None,
+            Some(&meta.provider),
+        )?;
         Ok(())
     }
 
@@ -355,7 +372,14 @@ impl Vault {
         } else {
             AuditEvent::SecretAdded
         };
-        self.audit(event, None, Some(&s.service), Some(&s.key_type), None, Some(source))?;
+        self.audit(
+            event,
+            None,
+            Some(&s.service),
+            Some(&s.key_type),
+            None,
+            Some(source),
+        )?;
         self.get_secret_meta(&s.service, &s.key_type)?
             .ok_or_else(|| CoreError::SecretNotFound {
                 service: s.service.clone(),
@@ -364,7 +388,11 @@ impl Vault {
     }
 
     /// Decrypt a value. Does not write an audit entry; callers decide what to record.
-    pub fn read_secret_value(&self, service: &str, key_type: &str) -> CoreResult<Zeroizing<String>> {
+    pub fn read_secret_value(
+        &self,
+        service: &str,
+        key_type: &str,
+    ) -> CoreResult<Zeroizing<String>> {
         let kek = self.kek()?;
         let row: Option<(String, Vec<u8>, Vec<u8>)> = self
             .conn
@@ -387,9 +415,20 @@ impl Vault {
     }
 
     /// Read for the user's own UI (reveal button). Audited as a read by "user".
-    pub fn reveal_secret(&mut self, service: &str, key_type: &str) -> CoreResult<Zeroizing<String>> {
+    pub fn reveal_secret(
+        &mut self,
+        service: &str,
+        key_type: &str,
+    ) -> CoreResult<Zeroizing<String>> {
         let v = self.read_secret_value(service, key_type)?;
-        self.audit(AuditEvent::KeyRead, Some("user"), Some(service), Some(key_type), None, Some("reveal"))?;
+        self.audit(
+            AuditEvent::KeyRead,
+            Some("user"),
+            Some(service),
+            Some(key_type),
+            None,
+            Some("reveal"),
+        )?;
         Ok(v)
     }
 
@@ -405,7 +444,14 @@ impl Vault {
         if let Some((service, key_type)) = row {
             self.conn
                 .execute("DELETE FROM secrets WHERE id = ?1", params![id])?;
-            self.audit(AuditEvent::SecretDeleted, None, Some(&service), Some(&key_type), None, None)?;
+            self.audit(
+                AuditEvent::SecretDeleted,
+                None,
+                Some(&service),
+                Some(&key_type),
+                None,
+                None,
+            )?;
         }
         Ok(())
     }
@@ -442,7 +488,14 @@ impl Vault {
             .map(|r| format!("{}/{}", r.service, r.key_type))
             .collect::<Vec<_>>()
             .join(",");
-        self.audit(AuditEvent::SessionRequested, Some(&m.agent.name), None, None, None, Some(&detail))
+        self.audit(
+            AuditEvent::SessionRequested,
+            Some(&m.agent.name),
+            None,
+            None,
+            None,
+            Some(&detail),
+        )
     }
 
     /// Approve a manifest: create the session and return it with the plaintext token.
@@ -494,7 +547,14 @@ impl Vault {
     }
 
     pub fn audit_session_denied(&self, m: &PermissionManifest, reason: &str) -> CoreResult<()> {
-        self.audit(AuditEvent::SessionDenied, Some(&m.agent.name), None, None, None, Some(reason))
+        self.audit(
+            AuditEvent::SessionDenied,
+            Some(&m.agent.name),
+            None,
+            None,
+            None,
+            Some(reason),
+        )
     }
 
     pub fn list_sessions(&self, include_inactive: bool) -> CoreResult<Vec<Session>> {
@@ -532,7 +592,14 @@ impl Vault {
             params![now],
         )?;
         if n > 0 {
-            self.audit(AuditEvent::SessionRevoked, None, None, None, None, Some(&format!("all ({n})")))?;
+            self.audit(
+                AuditEvent::SessionRevoked,
+                None,
+                None,
+                None,
+                None,
+                Some(&format!("all ({n})")),
+            )?;
         }
         Ok(n)
     }
@@ -811,14 +878,20 @@ mod tests {
 
         let (session, tok) = v.create_session(&manifest(Some(600))).unwrap();
         assert!(session.is_active(Utc::now()));
-        let val = v.read_key_for_session(&tok, "stripe", "secret_key").unwrap();
+        let val = v
+            .read_key_for_session(&tok, "stripe", "secret_key")
+            .unwrap();
         assert_eq!(&val[..], "sk_test_abcdefghijklmnopqrstuvwxyz");
 
-        let err = v.read_key_for_session(&tok, "openai", "api_key").unwrap_err();
+        let err = v
+            .read_key_for_session(&tok, "openai", "api_key")
+            .unwrap_err();
         assert!(matches!(err, CoreError::NotGranted { .. }));
 
         v.revoke_session(&session.id).unwrap();
-        let err = v.read_key_for_session(&tok, "stripe", "secret_key").unwrap_err();
+        let err = v
+            .read_key_for_session(&tok, "stripe", "secret_key")
+            .unwrap_err();
         assert!(matches!(err, CoreError::SessionRevoked));
 
         let log = v.audit_log(50, 0).unwrap();
@@ -937,19 +1010,23 @@ mod tests {
             label: None,
             source: SecretSource::Manual,
             metadata: Default::default(),
-        }).unwrap();
+        })
+        .unwrap();
         let (expired, expired_token) = v.create_session(&manifest(Some(600))).unwrap();
         let (_, active_token) = v.create_session(&manifest(Some(600))).unwrap();
-        v.conn.execute(
-            "UPDATE sessions SET expires_at = '2000-01-01T00:00:00+00:00' WHERE id = ?1",
-            params![expired.id],
-        ).unwrap();
+        v.conn
+            .execute(
+                "UPDATE sessions SET expires_at = '2000-01-01T00:00:00+00:00' WHERE id = ?1",
+                params![expired.id],
+            )
+            .unwrap();
         assert!(matches!(
             v.read_key_for_session(&expired_token, "stripe", "secret_key"),
             Err(CoreError::SessionExpired)
         ));
         assert_eq!(
-            &v.read_key_for_session(&active_token, "stripe", "secret_key").unwrap()[..],
+            &v.read_key_for_session(&active_token, "stripe", "secret_key")
+                .unwrap()[..],
             "expiry-test-value"
         );
         assert_eq!(v.revoke_all_sessions().unwrap(), 1);

@@ -64,7 +64,12 @@ pub trait BrowserExecutor: Send + Sync {
     /// Open a dedicated tab (in the PassValet tab group) at `start_url`. Returns the tab id.
     async fn session_begin(&self, run_id: &str, start_url: &str) -> Result<String, ExecutorError>;
     /// Run one tool. `params` follows the tool's JSON schema from [`crate::tools`].
-    async fn call(&self, run_id: &str, tool: &str, params: Value) -> Result<ToolOutput, ExecutorError>;
+    async fn call(
+        &self,
+        run_id: &str,
+        tool: &str,
+        params: Value,
+    ) -> Result<ToolOutput, ExecutorError>;
     /// Close the run's tabs and wipe all in-memory artifacts on the extension side.
     async fn session_end(&self, run_id: &str, keep_tabs: bool) -> Result<(), ExecutorError>;
 }

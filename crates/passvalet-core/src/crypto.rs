@@ -126,7 +126,13 @@ pub fn seal(key: &SymKey, plaintext: &[u8], aad: &[u8]) -> CoreResult<Sealed> {
     let nonce_bytes = random_bytes(NONCE_LEN);
     let nonce = XNonce::from_slice(&nonce_bytes);
     let ciphertext = cipher
-        .encrypt(nonce, Payload { msg: plaintext, aad })
+        .encrypt(
+            nonce,
+            Payload {
+                msg: plaintext,
+                aad,
+            },
+        )
         .map_err(|_| CoreError::Crypto("encrypt failed".into()))?;
     Ok(Sealed {
         nonce: nonce_bytes,

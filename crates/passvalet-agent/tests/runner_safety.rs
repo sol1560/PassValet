@@ -89,9 +89,13 @@ struct BurstProvider;
 impl LlmProvider for BurstProvider {
     async fn complete(&self, _: &CompletionRequest) -> Result<CompletionResponse, ProviderError> {
         Ok(CompletionResponse {
-            tool_calls: (0..5).map(|i| ToolCall {
-                id: i.to_string(), name: "read_page".into(), arguments: json!({}),
-            }).collect(),
+            tool_calls: (0..5)
+                .map(|i| ToolCall {
+                    id: i.to_string(),
+                    name: "read_page".into(),
+                    arguments: json!({}),
+                })
+                .collect(),
             ..Default::default()
         })
     }
@@ -310,19 +314,28 @@ async fn tool_batch_cannot_exceed_step_budget() {
         control: RunControl::default(),
         ladder: ModelLadder::new(vec!["test".into()]),
         max_tokens: 100,
-    }.run(RunRequest {
+    }
+    .run(RunRequest {
         run_id: "budget".into(),
         service: "openai".into(),
-        kind: RunKind::Collect { key_types: vec!["api_key".into()] },
+        kind: RunKind::Collect {
+            key_types: vec!["api_key".into()],
+        },
         playbook,
         hints: vec![],
-    }).await;
+    })
+    .await;
     assert!(matches!(outcome, RunOutcome::Failed { reason } if reason.contains("step budget (2)")));
     let mut steps = 0;
     while let Ok(event) = receiver.try_recv() {
-        if matches!(event, RunEvent::Step { .. }) { steps += 1; }
+        if matches!(event, RunEvent::Step { .. }) {
+            steps += 1;
+        }
     }
-    assert_eq!(steps, 2, "do not execute the rest of an oversized tool batch");
+    assert_eq!(
+        steps, 2,
+        "do not execute the rest of an oversized tool batch"
+    );
 }
 
 #[tokio::test]
@@ -342,7 +355,9 @@ async fn abort_does_not_wait_for_a_stalled_model() {
     let task = tokio::spawn(runner.run(RunRequest {
         run_id: "stalled-model".into(),
         service: "openai".into(),
-        kind: RunKind::Collect { key_types: vec!["api_key".into()] },
+        kind: RunKind::Collect {
+            key_types: vec!["api_key".into()],
+        },
         playbook: PlaybookSet::builtin().get("openai").unwrap().clone(),
         hints: vec![],
     }));
