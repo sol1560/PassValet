@@ -8,13 +8,14 @@ use std::time::Duration;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
-use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 
 use crate::error::{IpcError, RpcError};
 
 static PEER_COUNTER: AtomicU64 = AtomicU64::new(1);
+const MAX_MESSAGE_BYTES: usize = 1024 * 1024;
 
 type Pending = Arc<Mutex<HashMap<u64, oneshot::Sender<Result<Value, RpcError>>>>>;
 
@@ -100,7 +101,9 @@ impl Peer {
         params: &P,
         timeout: Duration,
     ) -> Result<R, IpcError> {
-        let v = self.call_value(method, serde_json::to_value(params)?, timeout).await?;
+        let v = self
+            .call_value(method, serde_json::to_value(params)?, timeout)
+            .await?;
         Ok(serde_json::from_value(v)?)
     }
 
@@ -113,7 +116,8 @@ impl Peer {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = oneshot::channel();
         self.pending.lock().unwrap().insert(id, tx);
-        let msg = serde_json::json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params });
+        let msg =
+            serde_json::json!({ "jsonrpc": "2.0", "id": id, "method": method, "params": params });
         if let Err(e) = self.send_raw(msg.to_string()) {
             self.pending.lock().unwrap().remove(&id);
             return Err(e);
@@ -172,27 +176,38 @@ where
 
     let peer_for_reader = peer.clone();
     let handle = tokio::spawn(async move {
-        let mut lines = BufReader::new(reader).lines();
+        let mut reader = BufReader::new(reader);
         loop {
-            match lines.next_line().await {
-                Ok(Some(line)) => {
+            let mut line = String::new();
+            let mut limited = (&mut reader).take((MAX_MESSAGE_BYTES + 1) as u64);
+            let read = tokio::select! {
+                _ = in_tx.closed() => break,
+                result = limited.read_line(&mut line) => result,
+            };
+            match read {
+                Ok(0) | Err(_) => break,
+                Ok(n) if n > MAX_MESSAGE_BYTES => {
+                    tracing::warn!(peer = peer_for_reader.id, "IPC message too large");
+                    break;
+                }
+                Ok(_) => {
                     if line.trim().is_empty() {
                         continue;
                     }
                     let msg: Value = match serde_json::from_str(&line) {
                         Ok(v) => v,
-                        Err(e) => {
-                            tracing::warn!(peer = peer_for_reader.id, "bad json: {e}");
+                        Err(_) => {
+                            tracing::warn!(peer = peer_for_reader.id, "invalid IPC JSON");
                             continue;
                         }
                     };
                     dispatch(&peer_for_reader, msg, &in_tx).await;
                 }
-                Ok(None) | Err(_) => break,
             }
         }
         peer_for_reader.fail_all();
         writer_task.abort();
+        let _ = writer_task.await;
     });
 
     (peer, in_rx, handle)
@@ -220,5 +235,66 @@ async fn dispatch(peer: &Peer, msg: Value, in_tx: &mpsc::Sender<Inbound>) {
         peer.resolve(id, Err(e));
     } else {
         peer.resolve(id, Ok(msg.get("result").cloned().unwrap_or(Value::Null)));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn accepts_message_at_size_limit() {
+        let (stream, mut remote) = tokio::io::duplex(1024);
+        let (_peer, mut receiver, task) = spawn_peer(stream);
+        let prefix = "{\"method\":\"echo\",\"params\":\"";
+        let suffix = "\"}\n";
+        let line = format!(
+            "{prefix}{}{suffix}",
+            "x".repeat(1024 * 1024 - prefix.len() - suffix.len())
+        );
+        let send = tokio::spawn(async move {
+            remote.write_all(line.as_bytes()).await.unwrap();
+        });
+        let inbound = tokio::time::timeout(Duration::from_secs(2), receiver.recv())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(inbound.method, "echo");
+        assert_eq!(
+            inbound.params.as_str().unwrap().len(),
+            1024 * 1024 - prefix.len() - suffix.len()
+        );
+        send.await.unwrap();
+        task.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn dropping_receiver_closes_idle_peer() {
+        let (stream, _remote) = tokio::io::duplex(1024);
+        let (peer, receiver, task) = spawn_peer(stream);
+        drop(receiver);
+        tokio::time::timeout(Duration::from_secs(1), task)
+            .await
+            .unwrap()
+            .unwrap();
+        tokio::task::yield_now().await;
+        assert!(peer.is_closed());
+    }
+
+    #[tokio::test]
+    async fn oversized_unterminated_message_closes_connection() {
+        let (stream, mut remote) = tokio::io::duplex(1024);
+        let (_peer, mut receiver, task) = spawn_peer(stream);
+        let send = tokio::spawn(async move {
+            let _ = remote.write_all(&vec![b'x'; 1024 * 1024 + 1]).await;
+            // 保持连接，不发送换行，服务端必须自己拒绝。
+            tokio::time::sleep(Duration::from_secs(3)).await;
+        });
+        tokio::time::timeout(Duration::from_secs(1), task)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(receiver.recv().await.is_none());
+        send.abort();
     }
 }

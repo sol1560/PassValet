@@ -7,10 +7,10 @@ todos:
     status: completed
   - id: macos-harness
     content: 建立 macOS Actions 和真实 Tauri、CLI、Chrome 扩展测试，先跑通最短完整流程
-    status: in_progress
+    status: pending
   - id: vault-authorization
     content: 修复并验证保险库、恢复、重新绑定、授权、撤销和本地通信安全
-    status: pending
+    status: in_progress
   - id: collection-rotation
     content: 完成七个服务的采集与安全轮换、模型调用、暂停取消和断线处理
     status: pending
@@ -110,3 +110,4 @@ isProject: true
 - 真实 SaaS 采集/轮换需要专用账号和对具体资源的授权；签名/公证需要有效Apple Developer条件。执行先完成不依赖它们的工作，缺少条件时最终状态保持阻塞而不是 `COMPLETED`。不要求用户在聊天里发送任何密钥。
 - “好用”按本计划中的首次使用、可理解提示、取消/恢复、键盘操作和最小窗口检查验收，不做无关重设计。不承诺未来第三方页面变化后仍永远通过。
 - 参考的测试事实：[Tauri macOS WebDriver](https://v2.tauri.app/develop/tests/webdriver)、[WebdriverIO Tauri embedded方式](https://webdriver.io/docs/desktop-testing/tauri)、[GitHub macOS runner条件](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)。执行时用实际安装版本与运行结果确认可用性。
+- 执行调整1：首次Actions运行因账号付款/支出上限被GitHub拒绝启动（run 34938681897，无测试步骤）。M2保持未完成，先推进可本地验证的M3–M5，恢复计费后补齐macOS验收。用户另加的云端agent研究只提出方案，不启用远程密钥访问。

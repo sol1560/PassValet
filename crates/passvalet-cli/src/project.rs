@@ -80,7 +80,10 @@ pub fn init(services_arg: Vec<String>, name: Option<String>, force: bool) -> Res
     let dir = std::env::current_dir()?;
     let path = dir.join(CONFIG_FILE);
     if path.exists() && !force {
-        bail!("{} already exists (use --force to overwrite)", path.display());
+        bail!(
+            "{} already exists (use --force to overwrite)",
+            path.display()
+        );
     }
     let project = name.unwrap_or_else(|| {
         dir.file_name()
@@ -123,7 +126,10 @@ pub fn init(services_arg: Vec<String>, name: Option<String>, force: bool) -> Res
             }
             for var in env_var_names(&text) {
                 if let Some((svc, kt)) = lookup_env_var(&var) {
-                    if !requests.iter().any(|r| r.service == svc && r.key_type == kt) {
+                    if !requests
+                        .iter()
+                        .any(|r| r.service == svc && r.key_type == kt)
+                    {
                         requests.push(ProjectRequest {
                             service: svc,
                             key_type: kt,
@@ -172,9 +178,7 @@ pub fn init(services_arg: Vec<String>, name: Option<String>, force: bool) -> Res
 
 fn env_var_names(text: &str) -> Vec<String> {
     let re = regex::Regex::new(r"(?m)^\s*(?:export\s+)?([A-Z][A-Z0-9_]{2,})\s*=").unwrap();
-    re.captures_iter(text)
-        .map(|c| c[1].to_string())
-        .collect()
+    re.captures_iter(text).map(|c| c[1].to_string()).collect()
 }
 
 fn lookup_env_var(var: &str) -> Option<(String, String)> {
@@ -281,22 +285,46 @@ pub async fn inject(out: Option<String>, ttl: Option<u64>, to_stdout: bool) -> R
         for m in missing {
             eprintln!("  {m}");
         }
-        eprintln!("Add them in PassValet (manual entry or 「添加服务」 auto-collection) and re-run.");
+        eprintln!(
+            "Add them in PassValet (manual entry or 「添加服务」 auto-collection) and re-run."
+        );
     }
     Ok(())
 }
 
 fn quote_env(v: &str) -> String {
-    if v.chars().all(|c| c.is_ascii_alphanumeric() || "-_./:+=".contains(c)) {
+    if v.chars()
+        .all(|c| c.is_ascii_alphanumeric() || "-_./:+=".contains(c))
+    {
         v.to_string()
     } else {
-        format!("\"{}\"", v.replace('\\', "\\\\").replace('"', "\\\""))
+        format!(
+            "\"{}\"",
+            v.replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('\n', "\\n")
+                .replace('\r', "\\r")
+        )
     }
 }
 
 /// Update or append `KEY=value` lines, preserving everything else.
 pub fn merge_env_file(path: &Path, values: &BTreeMap<String, String>) -> Result<usize> {
-    let existing = std::fs::read_to_string(path).unwrap_or_default();
+    for key in values.keys() {
+        let mut chars = key.chars();
+        if !chars
+            .next()
+            .is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
+            || !chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
+            bail!("invalid environment variable name");
+        }
+    }
+    let existing = match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(e) => return Err(e).context("cannot read existing env file; nothing was written"),
+    };
     let mut remaining = values.clone();
     let mut lines: Vec<String> = Vec::new();
     for line in existing.lines() {
@@ -308,9 +336,9 @@ pub fn merge_env_file(path: &Path, values: &BTreeMap<String, String>) -> Result<
             .next()
             .map(|k| k.trim().to_string());
         match key {
-            Some(k) if remaining.contains_key(&k) && !trimmed.starts_with('#') => {
-                let v = remaining.remove(&k).unwrap();
-                lines.push(format!("{k}={}", quote_env(&v)));
+            Some(k) if values.contains_key(&k) && !trimmed.starts_with('#') => {
+                remaining.remove(&k);
+                lines.push(format!("{k}={}", quote_env(&values[&k])));
             }
             _ => lines.push(line.to_string()),
         }
@@ -331,12 +359,23 @@ pub fn merge_env_file(path: &Path, values: &BTreeMap<String, String>) -> Result<
 }
 
 fn write_private(path: &Path, text: &str) -> Result<()> {
-    std::fs::write(path, text)?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
+    use std::io::Write;
+    match std::fs::symlink_metadata(path) {
+        Ok(meta) if !meta.is_file() => bail!("env destination must be a regular file"),
+        Ok(_) => {}
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+        Err(e) => return Err(e.into()),
     }
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    // NamedTempFile从创建起就是0600，同目录rename避免截断旧文件或短暂暴露新值。
+    let mut file = tempfile::NamedTempFile::new_in(parent)?;
+    file.write_all(text.as_bytes())?;
+    file.as_file().sync_all()?;
+    file.persist(path).map_err(|e| e.error)?;
+    std::fs::File::open(parent)?.sync_all()?;
     Ok(())
 }
 
@@ -347,8 +386,16 @@ pub async fn status() -> Result<()> {
             println!("PassValet app        : running (v{})", s.version);
             println!(
                 "vault                : {}{}",
-                if s.vault.initialized { "initialized" } else { "not initialized" },
-                if s.vault.locked { ", locked" } else { ", unlocked" }
+                if s.vault.initialized {
+                    "initialized"
+                } else {
+                    "not initialized"
+                },
+                if s.vault.locked {
+                    ", locked"
+                } else {
+                    ", unlocked"
+                }
             );
             if let Some(p) = s.vault.provider {
                 println!("unlock provider      : {}", p.as_str());
@@ -357,7 +404,11 @@ pub async fn status() -> Result<()> {
             println!("active sessions      : {}", s.vault.active_session_count);
             println!(
                 "browser extension    : {}",
-                if s.extension_connected { "connected" } else { "not connected" }
+                if s.extension_connected {
+                    "connected"
+                } else {
+                    "not connected"
+                }
             );
         }
         Err(passvalet_ipc::IpcError::NotRunning(p)) => {
@@ -365,7 +416,10 @@ pub async fn status() -> Result<()> {
         }
         Err(e) => return Err(e.into()),
     }
-    println!("socket               : {}", passvalet_ipc::IpcClient::socket_path().display());
+    println!(
+        "socket               : {}",
+        passvalet_ipc::IpcClient::socket_path().display()
+    );
     Ok(())
 }
 
@@ -376,7 +430,10 @@ pub async fn list() -> Result<()> {
         println!("vault is empty");
         return Ok(());
     }
-    println!("{:<12} {:<22} {:<16} {:<10} {}", "service", "key_type", "preview", "source", "updated");
+    println!(
+        "{:<12} {:<22} {:<16} {:<10} {}",
+        "service", "key_type", "preview", "source", "updated"
+    );
     for k in res.keys {
         println!(
             "{:<12} {:<22} {:<16} {:<10} {}",
@@ -400,6 +457,63 @@ mod tests {
     use super::*;
 
     #[test]
+    fn merge_updates_duplicate_definitions() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".env");
+        std::fs::write(
+            &path,
+            "# retain\nTOKEN=first\nexport TOKEN=last\nOTHER=keep\n",
+        )
+        .unwrap();
+        let values = BTreeMap::from([("TOKEN".into(), "new-value".into())]);
+        merge_env_file(&path, &values).unwrap();
+        let text = std::fs::read_to_string(path).unwrap();
+        assert_eq!(
+            text,
+            "# retain\nTOKEN=new-value\nTOKEN=new-value\nOTHER=keep\n"
+        );
+    }
+
+    #[test]
+    fn merge_refuses_invalid_input_without_changing_existing_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".env");
+        std::fs::write(&path, b"\xfforiginal").unwrap();
+        let values = BTreeMap::from([("TOKEN".into(), "new".into())]);
+        assert!(merge_env_file(&path, &values).is_err());
+        assert_eq!(std::fs::read(&path).unwrap(), b"\xfforiginal");
+        std::fs::write(&path, "OTHER=keep\n").unwrap();
+        let values = BTreeMap::from([("TOKEN\nINJECTED".into(), "new".into())]);
+        assert!(merge_env_file(&path, &values).is_err());
+        assert_eq!(std::fs::read(path).unwrap(), b"OTHER=keep\n");
+    }
+
+    #[test]
+    fn private_write_replaces_file_atomically_without_following_links() {
+        use std::os::unix::fs::{MetadataExt, PermissionsExt};
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".env");
+        std::fs::write(&path, "TOKEN=old\n").unwrap();
+        let previous = std::fs::File::open(&path).unwrap();
+        write_private(&path, "TOKEN=new\n").unwrap();
+        let metadata = std::fs::metadata(&path).unwrap();
+        assert_ne!(metadata.ino(), previous.metadata().unwrap().ino());
+        assert_eq!(metadata.permissions().mode() & 0o777, 0o600);
+        let link = dir.path().join("link");
+        std::os::unix::fs::symlink(&path, &link).unwrap();
+        assert!(write_private(&link, "bad").is_err());
+        assert_eq!(std::fs::read_to_string(path).unwrap(), "TOKEN=new\n");
+    }
+
+    #[test]
+    fn env_newlines_do_not_create_assignments() {
+        assert_eq!(
+            quote_env("first\nINJECTED=second\r\nlast"),
+            "\"first\\nINJECTED=second\\r\\nlast\""
+        );
+    }
+
+    #[test]
     fn merge_preserves_and_updates() {
         let dir = std::env::temp_dir().join(format!("pv-{}", uuid_like()));
         std::fs::create_dir_all(&dir).unwrap();
@@ -416,7 +530,13 @@ mod tests {
     }
 
     fn uuid_like() -> String {
-        format!("{:x}", std::time::SystemTime::now().elapsed().unwrap_or_default().as_nanos())
+        format!(
+            "{:x}",
+            std::time::SystemTime::now()
+                .elapsed()
+                .unwrap_or_default()
+                .as_nanos()
+        )
     }
 
     #[test]
