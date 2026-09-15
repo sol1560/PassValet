@@ -77,3 +77,30 @@ async fn openai_compat_glm_flash() {
     cfg.models = vec!["z-ai/glm-5.3-flash".into()];
     tool_call_roundtrip(cfg).await;
 }
+
+#[tokio::test]
+#[ignore]
+async fn settings_connection_test_without_tools() {
+    for mut cfg in [
+        ProviderConfig::zenmux_default(),
+        ProviderConfig::zenmux_anthropic(),
+    ] {
+        cfg.api_key = Some(key());
+        let req = CompletionRequest {
+            model: cfg.models[0].clone(),
+            system: "Reply with the single word OK.".into(),
+            messages: vec![Message::user_text("ping")],
+            tools: vec![],
+            max_tokens: 512,
+        };
+        let response = providers::build(&cfg)
+            .complete(&req)
+            .await
+            .expect("设置页的无工具请求应成功");
+        assert!(response.tool_calls.is_empty());
+        assert!(response
+            .text
+            .as_deref()
+            .is_some_and(|text| !text.trim().is_empty()));
+    }
+}

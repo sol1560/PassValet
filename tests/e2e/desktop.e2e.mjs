@@ -388,6 +388,33 @@ describe('真实桌面与MCP', () => {
       await $('span=已中止').waitForDisplayed();
       await browser.waitUntil(async () => !(await $('.toast').isExisting()));
       await browser.saveScreenshot('test-results/collection-aborted.png');
+      fixture.finishWithoutCapture();
+      for (const rotation of [false, true]) {
+        const pending = rotation
+          ? mcp.call('report_key_invalid', { service: 'collection_test', key_type: 'api_key', status_code: 401 })
+          : mcp.call('request_permissions', {
+            purpose: '测试未完成轮换不能返回旧密钥',
+            requests: [{ service: 'collection_test', key_type: 'api_key', access: 'read_write' }],
+            ttl_seconds: 300,
+          });
+        pending.catch(() => {});
+        await browser.waitUntil(async () => (await browser.getWindowHandles()).length > 1);
+        await browser.switchToWindow((await browser.getWindowHandles()).find((handle) => handle !== mainWindow));
+        await $(rotation ? 'button=批准并轮换' : 'button=批准').waitForDisplayed();
+        await $(rotation ? 'button=批准并轮换' : 'button=批准').click();
+        const result = body(await pending);
+        await browser.switchToWindow(mainWindow);
+        if (rotation) {
+          assert.equal(result.outcome, 'failed', '没有新密钥的部分完成不能被当作轮换成功');
+          assert.equal(result.value, null, '轮换失败不能把旧密钥当成新值返回');
+        } else {
+          assert.equal(result.status, 'approved');
+        }
+      }
+      const preserved = await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
+        service: 'collection_test', keyType: 'api_key',
+      }));
+      assert.ok(preserved === copied, '未完成的轮换应保留旧值');
     } finally {
       if (chrome) await chrome.deleteSession();
       await fixture.close();

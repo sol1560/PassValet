@@ -48,6 +48,10 @@ jobs:
           cp target/debug/passvalet "apps/desktop/src-tauri/binaries/passvalet-$(rustc -vV | sed -n 's/^host: //p')"
       - name: Rust tests
         run: cargo test --workspace --locked
+      - name: Rust formatting and strict checks
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Build real desktop with test driver
         env:
           VITE_PASSVALET_E2E: '1'

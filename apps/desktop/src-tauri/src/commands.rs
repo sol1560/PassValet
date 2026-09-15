@@ -355,7 +355,7 @@ pub async fn test_provider(state: State<'_, Arc<AppState>>) -> Res<ProviderTestR
         system: "Reply with the single word OK.".into(),
         messages: vec![passvalet_agent::provider::Message::user_text("ping")],
         tools: vec![],
-        max_tokens: 16,
+        max_tokens: 512,
     };
     match provider.complete(&req).await {
         Ok(r) => Ok(ProviderTestResult {
