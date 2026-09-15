@@ -209,6 +209,19 @@ impl Runner {
     }
 
     pub async fn run(mut self, req: RunRequest) -> RunOutcome {
+        // 通用点击工具无法强制先保存新值、再精确撤销旧值。
+        // 在实现服务专用的安全撤销路径前，不得把轮换交给模型执行。
+        if matches!(req.kind, RunKind::Rotate { .. }) {
+            let outcome = RunOutcome::Failed {
+                reason: "暂不支持安全自动轮换：尚无法保证新密钥保存后只撤销对应的旧密钥。未操作浏览器，请手动轮换。".into(),
+            };
+            self.emit(RunEvent::Finished {
+                run_id: req.run_id,
+                outcome: outcome.clone(),
+            })
+            .await;
+            return outcome;
+        }
         let outcome = self.run_inner(&req).await;
         // Destroy everything on the extension side regardless of outcome.
         let keep_tabs = matches!(

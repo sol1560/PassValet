@@ -71,7 +71,7 @@ export function PromptCard({ prompt, onDone, compact }: { prompt: PendingPrompt;
       {isRotate && prompt.kind.kind === "rotate" && (
         <div className="notice warn">
           agent 收到 {prompt.kind.status_code ?? "错误"}{prompt.kind.message ? `：${prompt.kind.message}` : ""}。
-          批准后 PassValet 会在你的浏览器里创建新 key 并撤销旧 key。
+          自动轮换的安全保护尚未完成，当前即使批准也会停止，不会创建或撤销密钥。请在服务网站手动处理。
         </div>
       )}
       {!isRotate && s.lines.some((l) => !l.available) && (

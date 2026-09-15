@@ -30,7 +30,7 @@
 | 34962353346 | GitHub Actions | M5严格检查 | done | 真实Codex安装、Rust测试与格式通过；clippy两处旧问题导致停止，尚未运行轮换回归 |
 | 34962867609 | GitHub Actions | M4/M5失败复现 | done | 全库fmt/clippy通过；12项桌面通过，轮换返回rotated而非failed已复现；随后设置测试因bail未执行。watch进程189753已结束 |
 | 34963420759 | GitHub Actions | M4修复/M5设置复现 | done | 13项桌面通过；设置保存失败后内存值变成31而非30已复现；watch进程193621已结束 |
-| 34964063115 | GitHub Actions | M5设置/剪贴板/Intel | running | 验证设置修复、系统剪贴板、日志筛选及双架构正式包；watch进程196636 |
+| 34964063115 | GitHub Actions | M5设置/剪贴板/Intel | done | 16项桌面、ARM64及Intel正式包全部通过；两种架构启动截图已检查；watch进程196636 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |

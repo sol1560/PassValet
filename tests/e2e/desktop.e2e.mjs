@@ -410,12 +410,18 @@ describe('真实桌面与MCP', () => {
         await browser.waitUntil(async () => (await browser.getWindowHandles()).length > 1);
         await browser.switchToWindow((await browser.getWindowHandles()).find((handle) => handle !== mainWindow));
         await $(rotation ? 'button=批准并轮换' : 'button=批准').waitForDisplayed();
+        if (rotation) {
+          assert.ok((await $('.notice.warn').getText()).includes('不会创建或撤销密钥'));
+          await browser.saveScreenshot('test-results/rotation-blocked-prompt.png');
+        }
         await $(rotation ? 'button=批准并轮换' : 'button=批准').click();
         const result = body(await pending);
         await browser.switchToWindow(mainWindow);
         if (rotation) {
-          assert.equal(result.outcome, 'failed', '没有新密钥的部分完成不能被当作轮换成功');
+          assert.equal(result.outcome, 'failed', '未实现安全撤销时不能执行轮换');
           assert.equal(result.value, null, '轮换失败不能把旧密钥当成新值返回');
+          assert.ok(result.message.includes('安全自动轮换'));
+          assert.equal(fixture.requestCount, 0, '危险轮换不能交给模型执行');
         } else {
           assert.equal(result.status, 'approved');
         }

@@ -9,6 +9,8 @@
 给 vibe coder 和 AI coding agent 用的密钥管家：在你自己的浏览器里自动从 SaaS 控制台抓取 API key，加密存在本机，
 按 session 分发给 agent（MCP / CLI），一次 Touch ID / passkey 授权，key 失效时自动回控制台轮换。
 
+**当前版本仍在验收，自动轮换已暂停。** 现有通用浏览器点击工具无法保证先保存新密钥、再只撤销对应的旧密钥，因此轮换请求会明确失败，不会交给模型执行。下文轮换说明是待完成的目标，不是当前可用能力。七个服务的真实账号、真实 Touch ID / Passkey 和 Apple 签名公证也尚未完成验收；Actions 测试包不是可直接信任的正式发行版。
+
 ![keys](docs/screenshots/keys.png)
 
 ## 组成
