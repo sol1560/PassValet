@@ -208,7 +208,12 @@ pub fn start<R: Runtime>(
             return Err(format!("{} 的 {} 不支持自动轮换", args.service, key_type));
         }
     }
-    if registry.active().is_some() {
+    // 检查和登记使用同一把锁，不能让两个请求同时通过空闲检查。
+    let mut active_runs = registry.runs.lock().unwrap();
+    if active_runs
+        .values()
+        .any(|entry| entry.info.finished.is_none())
+    {
         return Err("已有一个采集任务在运行，请先等待其完成或中止".into());
     }
     if args.provider.api_key.is_none()
@@ -240,7 +245,7 @@ pub fn start<R: Runtime>(
     }
 
     let control = RunControl::default();
-    registry.runs.lock().unwrap().insert(
+    active_runs.insert(
         run_id.clone(),
         Entry {
             info: RunInfo {
@@ -255,6 +260,7 @@ pub fn start<R: Runtime>(
             waiters: vec![],
         },
     );
+    drop(active_runs);
 
     let (tx, mut rx) = mpsc::channel::<RunEvent>(256);
     let provider = providers::build(&args.provider);
