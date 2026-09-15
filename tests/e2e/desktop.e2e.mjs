@@ -11,6 +11,26 @@ const secret = 'passvalet-e2e-only-not-a-real-api-key';
 let mcp;
 let mainWindow;
 
+function ipcCall(method, params) {
+  return new Promise((resolve, reject) => {
+    let data = '';
+    const socket = createConnection(process.env.PASSVALET_SOCKET, () => {
+      socket.write(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method, params })}\n`);
+    });
+    socket.setEncoding('utf8');
+    socket.setTimeout(10_000, () => socket.destroy(new Error('本地请求测试响应超时')));
+    socket.on('error', reject);
+    socket.on('end', () => reject(new Error('本地请求测试连接提前结束')));
+    socket.on('data', (chunk) => {
+      data += chunk;
+      if (!data.includes('\n')) return;
+      try { resolve(JSON.parse(data.slice(0, data.indexOf('\n')))); }
+      catch (error) { reject(error); }
+      finally { socket.destroy(); }
+    });
+  });
+}
+
 describe('真实桌面与MCP', () => {
   after(() => mcp?.close());
 
@@ -97,24 +117,7 @@ describe('真实桌面与MCP', () => {
     const chrome = await openExtension();
     try {
       await $('span=扩展已连接').waitForDisplayed();
-      const response = await new Promise((resolve, reject) => {
-        let data = '';
-        const socket = createConnection(process.env.PASSVALET_SOCKET, () => {
-          socket.write(`${JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'ext.event',
-            params: { kind: 'user_aborted', run_id: 'unrelated-peer-test' } })}\n`);
-        });
-        socket.setEncoding('utf8');
-        socket.setTimeout(5000, () => socket.destroy(new Error('扩展事件测试响应超时')));
-        socket.on('error', reject);
-        socket.on('end', () => reject(new Error('扩展事件测试连接提前结束')));
-        socket.on('data', (chunk) => {
-          data += chunk;
-          if (!data.includes('\n')) return;
-          try { resolve(JSON.parse(data.slice(0, data.indexOf('\n')))); }
-          catch (error) { reject(error); }
-          finally { socket.destroy(); }
-        });
-      });
+      const response = await ipcCall('ext.event', { kind: 'user_aborted', run_id: 'unrelated-peer-test' });
       assert.equal(response.error?.data?.code, 'not_extension');
     } finally {
       await chrome.deleteSession();
@@ -259,5 +262,30 @@ describe('真实桌面与MCP', () => {
       first.close();
       second.close();
     }
+  });
+
+  it('timed-out-request-cannot-be-approved-later', async () => {
+    const pending = ipcCall('request_permissions', {
+      manifest: { agent: { name: 'timeout-test' }, purpose: '测试过期后拒绝批准',
+        requests: [{ service: 'e2e', key_type: 'api_key', access: 'read' }] },
+      wait_seconds: 3,
+    });
+    pending.catch(() => {});
+    let prompt;
+    await browser.waitUntil(async () => {
+      const prompts = await browser.tauri.execute(({ core }) => core.invoke('prompt_list'));
+      prompt = prompts.find((p) => p.manifest.purpose === '测试过期后拒绝批准');
+      return Boolean(prompt);
+    });
+    assert.equal((await pending).error?.data?.code, 'timeout');
+    const error = await browser.execute(async (id) => {
+      try {
+        await window.__TAURI__.core.invoke('prompt_decide', { id, approve: true });
+        return null;
+      } catch (error) { return String(error); }
+    }, prompt.id);
+    assert.equal(error, '该请求已过期');
+    const sessions = await browser.tauri.execute(({ core }) => core.invoke('list_sessions', { includeInactive: false }));
+    assert.equal(sessions.some((s) => s.purpose === '测试过期后拒绝批准'), false);
   });
 });
