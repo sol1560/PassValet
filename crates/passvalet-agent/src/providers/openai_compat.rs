@@ -118,7 +118,6 @@ impl LlmProvider for OpenAiCompat {
             })).collect::<Vec<_>>(),
             "tool_choice": "auto",
             "max_tokens": req.max_tokens,
-            "temperature": req.temperature,
         });
         let mut r = self
             .http

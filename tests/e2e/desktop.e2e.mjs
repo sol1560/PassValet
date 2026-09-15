@@ -357,6 +357,23 @@ describe('真实桌面与MCP', () => {
       fixture.verify(value);
       await $('span=成功').waitForDisplayed();
       await browser.saveScreenshot('test-results/collection-success.png');
+      const firstRun = run.run_id;
+      fixture.copyOnce();
+      await $('button=在浏览器中开始采集 采集测试').click();
+      await browser.waitUntil(async () => {
+        const runs = await browser.tauri.execute(({ core }) => core.invoke('list_runs'));
+        run = runs.find((r) => r.service === 'collection_test' && r.run_id !== firstRun);
+        return Boolean(run?.finished);
+      }, { timeout: 45_000, timeoutMsg: '一次性显示的密钥未完成复制采集' });
+      assert.equal(run.finished.status, 'success', JSON.stringify(run.finished));
+      const copied = await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
+        service: 'collection_test', keyType: 'api_key',
+      }));
+      fixture.verify(copied);
+      assert.ok(copied !== value, '复制采集不能复用上一次保存的值');
+      await browser.waitUntil(() => browser.execute(() =>
+        [...document.querySelectorAll('span.tag')].filter((el) => el.textContent === '成功').length === 2));
+      await browser.saveScreenshot('test-results/collection-copy-once.png');
       fixture.stall();
       await $('button=在浏览器中开始采集 采集测试').click();
       await browser.waitUntil(() => fixture.modelWaiting, { timeout: 10_000 });

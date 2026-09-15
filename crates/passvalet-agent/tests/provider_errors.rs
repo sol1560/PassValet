@@ -39,7 +39,6 @@ async fn response_error(kind: ProviderKind, status: u16, body: String) -> String
         messages: vec![Message::user_text("test")],
         tools: vec![],
         max_tokens: 10,
-        temperature: 0.0,
     };
     let (result, ()) = tokio::time::timeout(std::time::Duration::from_secs(5), async {
         tokio::join!(provider.complete(&request), server)
