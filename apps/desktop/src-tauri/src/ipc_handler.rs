@@ -110,6 +110,9 @@ async fn dispatch<R: Runtime>(
             ok(serde_json::json!({ "ok": true, "app_version": env!("CARGO_PKG_VERSION") }))
         }
         methods::EXT_EVENT => {
+            if !state.extension.is_peer(inbound.peer.id()) {
+                return Err(RpcError::app("not_extension", "events require the current extension connection"));
+            }
             let ev: ExtEvent = inbound.params()?;
             if let ExtEvent::UserAborted { run_id } = &ev {
                 state.runs.abort(run_id);
