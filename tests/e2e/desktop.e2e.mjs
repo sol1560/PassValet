@@ -17,6 +17,16 @@ describe('真实桌面与MCP', () => {
   it('onboarding-keeps-recovery-until-confirmed', async () => {
     mainWindow = await browser.getWindowHandle();
     await $('button=创建保险库').waitForDisplayed();
+    for (const index of [1, 2]) {
+      await $(`.choice button:nth-child(${index})`).click();
+      assert.equal(await browser.execute(() => {
+        const choice = document.querySelector('.choice');
+        return choice.scrollWidth <= choice.clientWidth &&
+          document.documentElement.scrollWidth <= window.innerWidth;
+      }), true, '解锁选项应在窗口内完整显示，没有横向溢出');
+      await browser.saveScreenshot(`test-results/setup-option-${index}.png`);
+    }
+    await $('.choice button:first-child').click();
     await $('button=创建保险库').click();
     await $('.recovery').waitForDisplayed();
     assert.ok((await $('.recovery').getText()).length > 20, '应显示恢复密钥');
