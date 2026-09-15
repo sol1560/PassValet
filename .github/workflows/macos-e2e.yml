@@ -69,7 +69,11 @@ jobs:
 
   release-package:
     needs: desktop
-    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     env:
       CARGO_TERM_COLOR: never
@@ -106,7 +110,7 @@ jobs:
       - name: Unsigned test packages, not a published release
         uses: actions/upload-artifact@v4
         with:
-          name: macos-unsigned-test-packages
+          name: macos-unsigned-test-packages-${{ runner.arch }}
           path: test-results/packages/*
           if-no-files-found: error
           retention-days: 7
@@ -114,7 +118,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: macos-release-screenshot
+          name: macos-release-screenshot-${{ runner.arch }}
           path: test-results/release-startup.png
           if-no-files-found: ignore
           retention-days: 7

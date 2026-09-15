@@ -1,5 +1,7 @@
 //! settings.json — non-secret configuration.
 
+use std::io::Write;
+
 use passvalet_agent::provider::ProviderConfig;
 use passvalet_core::paths;
 use serde::{Deserialize, Serialize};
@@ -62,12 +64,25 @@ impl Settings {
         let mut s = self.clone();
         // never persist the api key in settings.json; it lives in the vault
         s.provider.api_key = None;
-        std::fs::write(&p, serde_json::to_string_pretty(&s)?)?;
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o600));
+        let text = serde_json::to_string_pretty(&s)?;
+        let temp = p.with_extension(format!("{}.tmp", uuid::Uuid::new_v4()));
+        let result = (|| -> anyhow::Result<()> {
+            let mut options = std::fs::OpenOptions::new();
+            options.write(true).create_new(true);
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::OpenOptionsExt;
+                options.mode(0o600);
+            }
+            let mut file = options.open(&temp)?;
+            file.write_all(text.as_bytes())?;
+            file.sync_all()?;
+            std::fs::rename(&temp, &p)?;
+            Ok(())
+        })();
+        if result.is_err() {
+            let _ = std::fs::remove_file(&temp);
         }
-        Ok(())
+        result
     }
 }

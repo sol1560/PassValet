@@ -29,6 +29,7 @@
 | 34961338797 | GitHub Actions | M4一次性复制与模型 | done | 13项桌面与正式包通过，一次性复制截图已检查 |
 | 34962353346 | GitHub Actions | M5严格检查 | done | 真实Codex安装、Rust测试与格式通过；clippy两处旧问题导致停止，尚未运行轮换回归 |
 | 34962867609 | GitHub Actions | M4/M5失败复现 | done | 全库fmt/clippy通过；12项桌面通过，轮换返回rotated而非failed已复现；随后设置测试因bail未执行。watch进程189753已结束 |
+| 34963420759 | GitHub Actions | M4修复/M5设置复现 | done | 13项桌面通过；设置保存失败后内存值变成31而非30已复现；watch进程193621已结束 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |

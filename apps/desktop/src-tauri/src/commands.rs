@@ -286,7 +286,8 @@ pub struct SettingsPatch {
 
 #[tauri::command]
 pub fn settings_set(state: State<'_, Arc<AppState>>, patch: SettingsPatch) -> Res<()> {
-    let mut s = state.settings.write().unwrap();
+    let mut current = state.settings.write().unwrap();
+    let mut s = current.clone();
     if let Some(p) = patch.provider {
         s.provider = ProviderConfig { api_key: None, ..p };
     }
@@ -305,7 +306,9 @@ pub fn settings_set(state: State<'_, Arc<AppState>>, patch: SettingsPatch) -> Re
     if let Some(b) = patch.presence_on_approve {
         s.presence_on_approve = b;
     }
-    s.save().map_err(err)
+    s.save().map_err(err)?;
+    *current = s;
+    Ok(())
 }
 
 #[tauri::command]
