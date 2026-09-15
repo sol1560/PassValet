@@ -56,7 +56,7 @@ impl RunRegistry {
             .values()
             .map(|e| e.info.clone())
             .collect();
-        v.sort_by(|a, b| b.started_at.cmp(&a.started_at));
+        v.sort_by_key(|e| std::cmp::Reverse(e.started_at));
         v
     }
 

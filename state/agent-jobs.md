@@ -27,6 +27,7 @@
 | 34959191822 | GitHub Actions | M4中止/M5安装 | done | 13项桌面、安装脚本、正式包通过；中止模型等待与保留旧密钥已验证，取消截图已检查 |
 | 34960142166 | GitHub Actions | M4服务格式与文案 | done | 桌面及正式包通过，新隐私文案截图已检查 |
 | 34961338797 | GitHub Actions | M4一次性复制与模型 | done | 13项桌面与正式包通过，一次性复制截图已检查 |
+| 34962353346 | GitHub Actions | M5严格检查 | done | 真实Codex安装、Rust测试与格式通过；clippy两处旧问题导致停止，尚未运行轮换回归 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |
