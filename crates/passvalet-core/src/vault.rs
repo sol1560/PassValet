@@ -938,6 +938,38 @@ mod tests {
     }
 
     #[test]
+    fn expired_session_cannot_read_while_another_session_remains_valid() {
+        let (mut v, _) = unlocked_vault();
+        v.put_secret(NewSecret {
+            service: "stripe".into(),
+            key_type: "secret_key".into(),
+            value: "expiry-test-value".into(),
+            label: None,
+            source: SecretSource::Manual,
+            metadata: Default::default(),
+        }).unwrap();
+        let (expired, expired_token) = v.create_session(&manifest(Some(600))).unwrap();
+        let (_, active_token) = v.create_session(&manifest(Some(600))).unwrap();
+        v.conn.execute(
+            "UPDATE sessions SET expires_at = '2000-01-01T00:00:00+00:00' WHERE id = ?1",
+            params![expired.id],
+        ).unwrap();
+        assert!(matches!(
+            v.read_key_for_session(&expired_token, "stripe", "secret_key"),
+            Err(CoreError::SessionExpired)
+        ));
+        assert_eq!(
+            &v.read_key_for_session(&active_token, "stripe", "secret_key").unwrap()[..],
+            "expiry-test-value"
+        );
+        assert_eq!(v.revoke_all_sessions().unwrap(), 1);
+        assert!(matches!(
+            v.read_key_for_session(&active_token, "stripe", "secret_key"),
+            Err(CoreError::SessionRevoked)
+        ));
+    }
+
+    #[test]
     fn locked_vault_refuses_reads() {
         let (mut v, _) = unlocked_vault();
         v.lock().unwrap();
