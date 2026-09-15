@@ -638,7 +638,22 @@ describe('真实桌面与MCP', () => {
       await browser.saveScreenshot('test-results/idle-locked.png');
       await browser.execute(() => [...document.querySelectorAll('button')]
         .find((button) => button.textContent.trim() === '用 Touch ID 解锁').focus());
-      await browser.keys('Enter');
+      // embedded driver 的 keys() 只合成事件，不会触发原生按钮的 Enter 行为。
+      await browser.execute(() => {
+        document.addEventListener('keydown', (event) => {
+          window.__passvaletKeyProbe = { key: event.key, trusted: event.isTrusted };
+        }, { once: true });
+      });
+      const processes = execFileSync('ps', ['-A', '-o', 'pid=', '-o', 'comm='], { encoding: 'utf8' })
+        .trim().split('\n').filter((line) => line.trim().endsWith(path.resolve('target/debug/passvalet-desktop')));
+      assert.equal(processes.length, 1, '只向本轮测试应用发送按键');
+      const pid = Number(processes[0].trim().split(/\s+/)[0]);
+      execFileSync('osascript', [
+        '-e', `tell application "System Events" to set frontmost of first application process whose unix id is ${pid} to true`,
+        '-e', 'tell application "System Events" to key code 36',
+      ], { timeout: 10_000 });
+      await browser.waitUntil(() => browser.execute(() => window.__passvaletKeyProbe?.trusted === true));
+      assert.equal(await browser.execute(() => window.__passvaletKeyProbe.key), 'Enter');
       await $('button=显示').waitForDisplayed();
       const after = await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
         service: 'collection_test', keyType: 'api_key',
