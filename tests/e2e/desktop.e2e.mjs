@@ -220,4 +220,44 @@ describe('真实桌面与MCP', () => {
       client.close();
     }
   });
+
+  it('concurrent-clients-cannot-use-each-others-approval', async () => {
+    const first = new McpClient();
+    const second = new McpClient();
+    try {
+      await Promise.all([first.init(), second.init()]);
+      const requests = [{ service: 'e2e', key_type: 'api_key', access: 'read' }];
+      const firstPending = first.call('request_permissions', { purpose: '并发请求甲：应拒绝', requests });
+      firstPending.catch(() => {});
+      await browser.waitUntil(async () => (await browser.getWindowHandles()).length > 1);
+      const prompt = (await browser.getWindowHandles()).find((handle) => handle !== mainWindow);
+      await browser.switchToWindow(prompt);
+      await browser.waitUntil(async () => (await $('.purpose').getText()).includes('并发请求甲：应拒绝'));
+      const secondPending = second.call('request_permissions', { purpose: '并发请求乙：应批准', requests });
+      secondPending.catch(() => {});
+      await $('span=还有 1 个请求排队').waitForDisplayed();
+      await $('button=拒绝').click();
+      assert.equal(body(await firstPending).code, 'user_denied');
+      await browser.waitUntil(async () => (await $('.purpose').getText()).includes('并发请求乙：应批准'));
+      await $('button=批准').click();
+      assert.equal(body(await secondPending).status, 'approved');
+      const denied = await first.call('get_key', { service: 'e2e', key_type: 'api_key' });
+      assert.equal(denied.isError, true);
+      assert.equal(body(denied).code, 'no_session');
+      const allowed = await second.call('get_key', { service: 'e2e', key_type: 'api_key' });
+      assert.ok(body(allowed).value === secret, '批准只能允许对应客户端读取');
+      await browser.switchToWindow(mainWindow);
+      await $('button=会话').click();
+      await $('button=撤销').waitForDisplayed();
+      await $('button=撤销全部').click();
+      await browser.waitUntil(async () => !(await $('button=撤销').isExisting()));
+      const revoked = await second.call('get_key', { service: 'e2e', key_type: 'api_key' });
+      assert.equal(revoked.isError, true);
+      assert.equal(body(revoked).code, 'session_revoked');
+    } finally {
+      await browser.switchToWindow(mainWindow);
+      first.close();
+      second.close();
+    }
+  });
 });
