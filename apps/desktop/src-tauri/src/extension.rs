@@ -42,6 +42,10 @@ impl ExtensionBridge {
         self.peer.lock().unwrap().as_ref().map(|(_, h)| h.clone())
     }
 
+    pub fn is_peer(&self, peer_id: u64) -> bool {
+        self.peer().map(|peer| peer.id() == peer_id).unwrap_or(false)
+    }
+
     fn peer(&self) -> Result<Peer, ExecutorError> {
         self.peer
             .lock()
@@ -112,5 +116,31 @@ impl BrowserExecutor for ExtensionBridge {
         )
         .await
         .map(|_| ())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn only_the_current_extension_peer_is_accepted() {
+        let (stream, _remote) = tokio::io::duplex(1024);
+        let (first, _first_requests, _first_task) = passvalet_ipc::peer::spawn_peer(stream);
+        let (stream, _remote2) = tokio::io::duplex(1024);
+        let (second, _second_requests, _second_task) = passvalet_ipc::peer::spawn_peer(stream);
+        let bridge = ExtensionBridge::default();
+        let hello = ExtHelloParams { extension_version: "test".into(), browser: "chrome".into() };
+        assert!(!bridge.is_peer(first.id()));
+        bridge.attach(first.clone(), hello.clone());
+        assert!(bridge.is_peer(first.id()));
+        assert!(!bridge.is_peer(second.id()));
+        bridge.attach(second.clone(), hello);
+        assert!(!bridge.is_peer(first.id()));
+        assert!(bridge.is_peer(second.id()));
+        bridge.detach_if(first.id());
+        assert!(bridge.is_peer(second.id()));
+        bridge.detach_if(second.id());
+        assert!(!bridge.is_peer(second.id()));
     }
 }
