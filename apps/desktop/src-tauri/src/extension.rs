@@ -25,11 +25,14 @@ impl ExtensionBridge {
         *self.peer.lock().unwrap() = Some((peer, hello));
     }
 
-    pub fn detach_if(&self, peer_id: u64) {
+    pub fn detach_if(&self, peer_id: u64) -> bool {
         let mut g = self.peer.lock().unwrap();
         if g.as_ref().map(|(p, _)| p.id() == peer_id).unwrap_or(false) {
             tracing::info!("extension disconnected");
             *g = None;
+            true
+        } else {
+            false
         }
     }
 
@@ -164,9 +167,19 @@ mod tests {
         bridge.attach(second.clone(), hello);
         assert!(!bridge.is_peer(first.id()));
         assert!(bridge.is_peer(second.id()));
-        bridge.detach_if(first.id());
+        assert!(!bridge.detach_if(first.id()));
         assert!(bridge.is_peer(second.id()));
-        bridge.detach_if(second.id());
+        drop(_remote2);
+        tokio::time::timeout(Duration::from_secs(1), async {
+            while !second.is_closed() {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        assert!(!bridge.is_connected());
+        assert!(bridge.detach_if(second.id()));
         assert!(!bridge.is_peer(second.id()));
+        assert!(!bridge.detach_if(second.id()));
     }
 }
