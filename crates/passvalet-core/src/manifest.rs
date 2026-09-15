@@ -69,11 +69,11 @@ pub fn grants_of(m: &PermissionManifest) -> Vec<Grant> {
 }
 
 pub fn ttl_label(secs: u64) -> String {
-    if secs % 86400 == 0 {
+    if secs.is_multiple_of(86400) {
         format!("{} 天", secs / 86400)
-    } else if secs % 3600 == 0 {
+    } else if secs.is_multiple_of(3600) {
         format!("{} 小时", secs / 3600)
-    } else if secs % 60 == 0 {
+    } else if secs.is_multiple_of(60) {
         format!("{} 分钟", secs / 60)
     } else {
         format!("{secs} 秒")

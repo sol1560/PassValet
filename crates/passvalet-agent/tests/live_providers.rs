@@ -1,7 +1,7 @@
 //! Live smoke tests against ZenMux. Ignored by default; run with
 //! `ZENMUX_API_KEY=... cargo test -p passvalet-agent --test live_providers -- --ignored`.
 
-use passvalet_agent::provider::{CompletionRequest, LlmProvider, Message, ProviderConfig};
+use passvalet_agent::provider::{CompletionRequest, Message, ProviderConfig};
 use passvalet_agent::providers;
 use passvalet_agent::tools;
 
