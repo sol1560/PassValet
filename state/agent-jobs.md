@@ -23,6 +23,7 @@
 | 34955477283 | GitHub Actions | M5 CLI修复 | done | desktop和release通过，完整/部分/全部缺失三种注入已验证；未包含目录锁修复 |
 | 34956448788 | GitHub Actions | M4/M5弹窗与目录锁 | done | Rust、12项真实桌面、正式包检查通过；包含macOS目录锁和弹窗拒绝回归 |
 | 34957618846 | GitHub Actions | M4完整采集测试 | done | 原有12项通过；第二次启动Chrome失败，改为独立目录后重测，尚未验证完整采集 |
+| 34958176558 | GitHub Actions | M4真实扩展采集 | done | 13项桌面与正式包通过；网页取值→保险库读回、三次模型请求不含完整测试密钥；成功截图已检查 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |

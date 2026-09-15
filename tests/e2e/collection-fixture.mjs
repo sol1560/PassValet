@@ -8,6 +8,8 @@ export async function collectionFixture() {
   const secret = 'sk-passvalet-fixture-only-0123456789abcdefgh';
   let requests = 0;
   let failure;
+  let stalled = false;
+  let modelWaiting = false;
   const server = createServer(async (req, res) => {
     try {
       if (req.method === 'GET' && req.url === '/keys') {
@@ -22,6 +24,10 @@ export async function collectionFixture() {
       let raw = '';
       for await (const chunk of req) raw += chunk;
       assert.equal(raw.includes(secret), false, '发给模型的请求不能包含测试密钥');
+      if (stalled) {
+        modelWaiting = true;
+        return; // 故意不响应，用真实未完成的HTTP请求测试中止。
+      }
       const body = JSON.parse(raw);
       const tools = body.messages.filter((message) => message.role === 'tool');
       requests++;
@@ -73,6 +79,8 @@ instructions = "Read the API key input and capture it."
 `);
   return {
     provider: { kind: 'openai_compat', base_url: `${base}/v1`, models: ['test-model'] },
+    stall() { stalled = true; },
+    get modelWaiting() { return modelWaiting; },
     verify(value) {
       if (failure) throw failure;
       assert.equal(requests, 3);

@@ -354,6 +354,19 @@ describe('真实桌面与MCP', () => {
       fixture.verify(value);
       await $('span=成功').waitForDisplayed();
       await browser.saveScreenshot('test-results/collection-success.png');
+      fixture.stall();
+      await $('button=在浏览器中开始采集 采集测试').click();
+      await browser.waitUntil(() => fixture.modelWaiting, { timeout: 10_000 });
+      await $('button=中止').click();
+      await browser.waitUntil(async () => {
+        const runs = await browser.tauri.execute(({ core }) => core.invoke('list_runs'));
+        return runs.some((r) => r.service === 'collection_test' && r.run_id !== run.run_id && r.finished?.status === 'aborted');
+      }, { timeout: 5_000, timeoutMsg: '中止不应等待模型的180秒超时' });
+      fixture.verify(await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
+        service: 'collection_test', keyType: 'api_key',
+      })));
+      await $('span=已中止').waitForDisplayed();
+      await browser.saveScreenshot('test-results/collection-aborted.png');
     } finally {
       if (chrome) await chrome.deleteSession();
       await fixture.close();
