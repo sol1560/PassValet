@@ -616,7 +616,7 @@ async fn unredacted_browser_images_never_reach_the_model() {
                 key_types: vec!["api_key".into()],
             },
             playbook: PlaybookSet::builtin().get("openai").unwrap().clone(),
-            hints: vec![],
+            hints: vec![format!("使用项目 alpha，旧令牌 ghp_{}", "C3".repeat(20))],
         })
         .await;
     let requests = provider.requests.lock().unwrap();
@@ -625,6 +625,13 @@ async fn unredacted_browser_images_never_reach_the_model() {
         2,
         "must inspect the request after browser output"
     );
+    for request in requests.iter() {
+        assert!(request.system.contains("使用项目 alpha"));
+        assert!(
+            !request.system.contains(&"C3".repeat(20)),
+            "user hint leaked a token"
+        );
+    }
     let conversation = serde_json::to_string(&requests[1].messages).unwrap();
     assert!(
         conversation.contains("Settings button"),
