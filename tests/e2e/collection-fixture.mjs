@@ -12,6 +12,7 @@ export async function collectionFixture() {
   let failure;
   let stalled = false;
   let modelWaiting = false;
+  let incomplete = false;
   const server = createServer(async (req, res) => {
     try {
       if (req.method === 'GET' && req.url === '/keys') {
@@ -38,12 +39,15 @@ export async function collectionFixture() {
       const body = JSON.parse(raw);
       const tools = body.messages.filter((message) => message.role === 'tool');
       requests++;
-      const step = (copyMode
+      const step = incomplete ? 'incomplete' : (copyMode
         ? ['read', 'reveal', 'read', 'copy', 'clipboard', 'done']
         : ['read', 'element', 'done'])[requests - 1];
       let name;
       let args;
-      if (step === 'read') {
+      if (step === 'incomplete') {
+        name = 'done';
+        args = { summary: '测试：没有捕获任何新密钥' };
+      } else if (step === 'read') {
         name = 'read_page';
         args = { filter: 'interactive' };
       } else if (step === 'reveal' || step === 'copy') {
@@ -95,11 +99,16 @@ key_types = ["api_key"]
 max_steps = 8
 [collect]
 instructions = "Read the API key input and capture it."
+[rotate]
+supported = true
+max_steps = 8
+instructions = "This local test only checks incomplete outcomes. Do not delete anything."
 `);
   return {
     provider: { kind: 'openai_compat', base_url: `${base}/v1`, models: ['test-model'] },
     copyOnce() { copyMode = true; secret = secrets[1]; requests = 0; },
     stall() { stalled = true; },
+    finishWithoutCapture() { incomplete = true; stalled = false; requests = 0; },
     get modelWaiting() { return modelWaiting; },
     verify(value) {
       if (failure) throw failure;
