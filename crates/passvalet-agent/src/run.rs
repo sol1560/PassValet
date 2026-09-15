@@ -439,10 +439,11 @@ impl Runner {
                         let out = self.executor.call(&run_id, name, tc.arguments.clone()).await;
                         let (content, text, is_error) = match out {
                             Ok(o) => {
-                                let mut text = redact::redact(&o.text);
+                                let mut text = o.text;
                                 if let Some(bs) = &o.browser_state {
                                     text.push_str(&format!("\n[tab {} · {} · {}]", bs.tab_id, bs.title, bs.url));
                                 }
+                                let text = redact::redact(&text);
                                 // Browser images have not been redacted. Never forward them, even
                                 // when an executor unexpectedly attaches one to a text tool.
                                 let content = vec![ContentPart::Text(text.clone())];

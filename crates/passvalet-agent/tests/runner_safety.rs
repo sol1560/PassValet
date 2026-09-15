@@ -1,7 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use passvalet_agent::executor::{BrowserExecutor, ExecutorError, ToolOutput};
+use passvalet_agent::executor::{BrowserExecutor, BrowserState, ExecutorError, ToolOutput};
 use passvalet_agent::ladder::ModelLadder;
 use passvalet_agent::playbook::PlaybookSet;
 use passvalet_agent::provider::*;
@@ -50,6 +50,11 @@ impl BrowserExecutor for BrowserWithPrivateImage {
         Ok(ToolOutput {
             text: "Settings button".into(),
             image_png_base64: Some("private-screenshot-bytes".into()),
+            browser_state: Some(BrowserState {
+                tab_id: "1".into(),
+                title: format!("private ghp_{}", "A1".repeat(20)),
+                url: format!("https://example.test/?token=ghp_{}", "B2".repeat(20)),
+            }),
             ..Default::default()
         })
     }
@@ -296,6 +301,14 @@ async fn unredacted_browser_images_never_reach_the_model() {
         "safe text must remain usable"
     );
     assert!(!conversation.contains("private-screenshot-bytes"));
+    assert!(
+        !conversation.contains(&"A1".repeat(20)),
+        "page title leaked a token"
+    );
+    assert!(
+        !conversation.contains(&"B2".repeat(20)),
+        "page URL leaked a token"
+    );
     assert!(!passvalet_agent::tools::is_browser_tool("screenshot"));
     for request in requests.iter() {
         for message in &request.messages {
