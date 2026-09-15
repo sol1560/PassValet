@@ -12,6 +12,7 @@ const PATTERNS: RegExp[] = [
   /ghp_[A-Za-z0-9]{30,}/g,
   /gho_[A-Za-z0-9]{30,}/g,
   /github_pat_[A-Za-z0-9_]{40,}/g,
+  /vc[piark]_[A-Za-z0-9_-]+/g,
   /AKIA[A-Z0-9]{16}/g,
   /AIza[A-Za-z0-9_-]{30,}/g,
   /re_[A-Za-z0-9_]{20,}/g,

@@ -122,7 +122,7 @@ pub static SERVICES: &[ServiceDef] = &[
     ServiceDef {
         id: "anthropic",
         label: "Anthropic",
-        dashboard_url: "https://console.anthropic.com/settings/keys",
+        dashboard_url: "https://platform.claude.com/settings/keys",
         key_types: &[
             kt!("api_key", "API key", "API 密钥", "ANTHROPIC_API_KEY", true, Some(r"^sk-ant-[A-Za-z0-9_-]{20,}$")),
         ],
@@ -130,9 +130,9 @@ pub static SERVICES: &[ServiceDef] = &[
     ServiceDef {
         id: "vercel",
         label: "Vercel",
-        dashboard_url: "https://vercel.com/account/settings/tokens",
+        dashboard_url: "https://vercel.com/account/tokens",
         key_types: &[
-            kt!("token", "Access token", "访问令牌", "VERCEL_TOKEN", true, Some(r"^[A-Za-z0-9]{24}$")),
+            kt!("token", "Access token", "访问令牌", "VERCEL_TOKEN", true, Some(r"^(vcp_[A-Za-z0-9_-]+|[A-Za-z0-9]{24})$")),
         ],
     },
     ServiceDef {
@@ -240,6 +240,16 @@ pub fn is_valid_id(s: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn vercel_accepts_current_and_legacy_personal_tokens() {
+        let suffix = "A1".repeat(12);
+        assert!(value_matches_pattern("vercel", "token", &format!("vcp_{suffix}")));
+        assert!(value_matches_pattern("vercel", "token", &suffix));
+        for invalid in ["vcp_", "vcp_***", "vci_not_a_personal_token", "vcp_token with spaces"] {
+            assert!(!value_matches_pattern("vercel", "token", invalid));
+        }
+    }
 
     #[test]
     fn patterns_compile() {

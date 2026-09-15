@@ -340,6 +340,9 @@ describe('真实桌面与MCP', () => {
       await $('span=扩展已连接').waitForDisplayed();
       await $('button=自动采集').click();
       await $('button=采集测试').click();
+      assert.equal(await browser.execute(() =>
+        document.querySelector('.page-head p').textContent.includes('规则可能漏掉其他敏感内容') &&
+        document.documentElement.scrollWidth <= window.innerWidth), true);
       await $('button=在浏览器中开始采集 采集测试').click();
       let run;
       await browser.waitUntil(async () => {
@@ -366,6 +369,7 @@ describe('真实桌面与MCP', () => {
         service: 'collection_test', keyType: 'api_key',
       })));
       await $('span=已中止').waitForDisplayed();
+      await browser.waitUntil(async () => !(await $('.toast').isExisting()));
       await browser.saveScreenshot('test-results/collection-aborted.png');
     } finally {
       if (chrome) await chrome.deleteSession();

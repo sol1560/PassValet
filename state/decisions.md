@@ -26,3 +26,10 @@
 - 优先用服务商短期且范围有限的凭据；永久key一旦发出，撤销PassValet会话不能收回副本。真正即时阻止使用需服务商撤销key或受控代调用，后者超出v1范围。
 - 不能同时承诺“Mac离线仍可新取key”“不在云端持有key”“每次Mac本地授权”。必须明确取舍。本轮只研究，不部署中转、不配远程访问。
 - 来源：https://ampcode.com/docs/customize/mcp 、https://ampcode.com/docs/orbs/handling-secrets 、https://ampcode.com/docs/cli/runners 、https://cursor.com/docs/cloud-agent 、https://cursor.com/docs/cloud-agent/capabilities 。
+
+## 服务入口和令牌格式核对
+
+- Vercel于2026-02-09公布新前缀vcp/vci/vca/vcr/vck；当前个人令牌文档明确vcp_，未给出固定总长度。因此个人令牌接受vcp_加非空字母数字/下划线/短横线，并兼容旧24位字母数字。此检查只确认外形，不证明令牌有效或有权限。五类已知新前缀在扩展和应用两处隐藏。
+- Vercel当前创建入口为https://vercel.com/account/tokens；官方支持账户、团队、项目三种范围，不能把文档核对当成真实账号验证。来源：https://vercel.com/changelog/new-token-formats-and-secret-scanning 、https://vercel.com/docs/accounts/access-tokens 。
+- Anthropic当前控制台为https://platform.claude.com/，API key页面为https://platform.claude.com/settings/keys；同步登记页与采集入口，避免旧主机跳转触发网站限制。来源：https://platform.claude.com/docs/en/get-api-key 。
+- 采集页面原有“永远看不到key”承诺过强，改为说明按已知格式隐藏仍可能遗漏；新文案需随下一轮真实macOS截图检查。
