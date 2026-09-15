@@ -452,6 +452,9 @@ impl Runner {
                         } else {
                             Ok(ToolOutput::error("key_type is not part of this request"))
                         };
+                        if self.control.is_aborted() {
+                            return RunOutcome::Aborted;
+                        }
                         let (text, is_error) = match out {
                             Ok(ToolOutput {
                                 secret: Some(value),

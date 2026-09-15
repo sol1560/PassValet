@@ -229,7 +229,7 @@ impl LlmProvider for CapturingProvider {
     }
 }
 
-struct CapturingBrowser;
+struct CapturingBrowser(Option<RunControl>);
 
 #[async_trait]
 impl BrowserExecutor for CapturingBrowser {
@@ -237,6 +237,9 @@ impl BrowserExecutor for CapturingBrowser {
         Ok("1".into())
     }
     async fn call(&self, _: &str, _: &str, _: Value) -> Result<ToolOutput, ExecutorError> {
+        if let Some(control) = &self.0 {
+            control.abort();
+        }
         Ok(ToolOutput {
             secret: Some("test-value".into()),
             ..Default::default()
@@ -268,19 +271,25 @@ impl SecretSink for CaptureSink {
 }
 
 #[tokio::test]
-async fn only_requested_valid_captures_count_as_success() {
-    for (key_type, valid) in [("api_key", true), ("api_key", false), ("other_key", true)] {
+async fn only_requested_valid_and_uncancelled_captures_count_as_success() {
+    for (key_type, valid, aborted) in [
+        ("api_key", true, false),
+        ("api_key", false, false),
+        ("other_key", true, false),
+        ("api_key", true, true),
+    ] {
         let sink = Arc::new(CaptureSink {
             valid,
             writes: Mutex::new(vec![]),
         });
         let (events, _receiver) = mpsc::channel(16);
+        let control = RunControl::default();
         let outcome = Runner {
             provider: Arc::new(CapturingProvider(key_type)),
-            executor: Arc::new(CapturingBrowser),
+            executor: Arc::new(CapturingBrowser(aborted.then(|| control.clone()))),
             sink: sink.clone(),
             events,
-            control: RunControl::default(),
+            control,
             ladder: ModelLadder::new(vec!["test".into()]),
             max_tokens: 100,
         }
@@ -294,7 +303,9 @@ async fn only_requested_valid_captures_count_as_success() {
             hints: vec![],
         })
         .await;
-        if key_type == "api_key" && valid {
+        if aborted {
+            assert_eq!(outcome, RunOutcome::Aborted);
+        } else if key_type == "api_key" && valid {
             assert!(
                 matches!(outcome, RunOutcome::Success { captured, .. } if captured == vec!["api_key"])
             );
@@ -304,10 +315,10 @@ async fn only_requested_valid_captures_count_as_success() {
                 "invalid or unrelated captures must not satisfy the request"
             );
         }
-        if key_type != "api_key" {
+        if key_type != "api_key" || aborted {
             assert!(
                 sink.writes.lock().unwrap().is_empty(),
-                "unrequested types must not reach storage"
+                "unrequested or cancelled captures must not reach storage"
             );
         }
     }
