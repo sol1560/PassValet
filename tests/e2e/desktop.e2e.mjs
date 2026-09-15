@@ -544,4 +544,16 @@ describe('真实桌面与MCP', () => {
       }
     }
   });
+
+  it('settings-shows-user-wide-editor-configuration', async () => {
+    const snippets = await browser.tauri.execute(({ core }) => core.invoke('mcp_config_snippet'));
+    assert.ok(snippets.claude_code.startsWith('claude mcp add --scope user passvalet -- '));
+    assert.equal(JSON.parse(snippets.cursor).mcpServers.passvalet.command, snippets.cli);
+    assert.ok(snippets.codex.includes(`command = ${JSON.stringify(snippets.cli)}`));
+    await $('button=设置').click();
+    await $('h2=接入 Agent（MCP）').waitForDisplayed();
+    await $('h2=接入 Agent（MCP）').scrollIntoView();
+    assert.equal(await browser.execute(() => document.documentElement.scrollWidth <= window.innerWidth), true);
+    await browser.saveScreenshot('test-results/settings-mcp-config.png');
+  });
 });

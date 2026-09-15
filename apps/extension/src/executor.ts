@@ -93,7 +93,9 @@ export class Executor {
       for (const s of this.sessions.values()) {
         if (s.attached.has(source.tabId)) {
           s.attached.delete(source.tabId);
+          s.aborted = true;
           this.onEvent?.({ kind: "debugger_detached", run_id: s.runId, tab_id: String(source.tabId), reason });
+          this.onEvent?.({ kind: "user_aborted", run_id: s.runId });
         }
       }
     });
@@ -151,6 +153,7 @@ export class Executor {
       try {
         await this.cdp(tabId, "Runtime.evaluate", { expression: "window.__pvClipboard = ''; void 0" });
       } catch {}
+      s.attached.delete(tabId);
       try {
         await chrome.debugger.detach({ tabId });
       } catch {}

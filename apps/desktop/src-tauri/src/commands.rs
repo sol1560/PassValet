@@ -588,8 +588,8 @@ pub fn mcp_config_snippet() -> serde_json::Value {
     let cli = cli_path().display().to_string();
     serde_json::json!({
         "cursor": serde_json::json!({ "mcpServers": { "passvalet": { "command": cli, "args": ["mcp"] } } }).to_string(),
-        "claude_code": format!("claude mcp add passvalet -- {cli} mcp"),
-        "codex": format!("[mcp_servers.passvalet]\ncommand = \"{cli}\"\nargs = [\"mcp\"]"),
+        "claude_code": format!("claude mcp add --scope user passvalet -- '{}' mcp", cli.replace('\'', "'\\''")),
+        "codex": format!("[mcp_servers.passvalet]\ncommand = {}\nargs = [\"mcp\"]", serde_json::to_string(&cli).unwrap()),
         "cli": cli,
     })
 }
