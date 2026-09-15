@@ -251,6 +251,7 @@ pub enum UnlockProviderKind {
     /// Native macOS passkey with the WebAuthn PRF extension; KEK = HKDF(prf_output).
     PasskeyPrf,
     /// Random KEK stored in the login Keychain, gated by LocalAuthentication (Touch ID).
+    #[serde(rename = "touchid_keychain", alias = "touch_id_keychain")]
     TouchIdKeychain,
 }
 
@@ -323,4 +324,25 @@ pub fn fingerprint(value: &str) -> String {
     let head: String = chars[..4].iter().collect();
     let tail: String = chars[n - 4..].iter().collect();
     format!("{head}…{tail}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::UnlockProviderKind;
+
+    #[test]
+    fn unlock_provider_names_match_ui_and_storage() {
+        for (name, provider) in [
+            ("touchid_keychain", UnlockProviderKind::TouchIdKeychain),
+            ("passkey_prf", UnlockProviderKind::PasskeyPrf),
+        ] {
+            assert_eq!(serde_json::to_value(provider).unwrap(), name);
+            assert_eq!(
+                serde_json::from_value::<UnlockProviderKind>(name.into()).unwrap(),
+                provider
+            );
+            assert_eq!(provider.as_str(), name);
+            assert_eq!(UnlockProviderKind::parse(name), Some(provider));
+        }
+    }
 }

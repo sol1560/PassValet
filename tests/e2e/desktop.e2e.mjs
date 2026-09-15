@@ -16,6 +16,9 @@ describe('真实桌面与MCP', () => {
     await $('.recovery').waitForDisplayed();
     assert.ok((await $('.recovery').getText()).length > 20, '应显示恢复密钥');
     assert.equal(await $('button=进入 PassValet').isEnabled(), false);
+    await browser.execute(() => { document.querySelector('.recovery').style.visibility = 'hidden'; });
+    await browser.saveScreenshot('test-results/recovery-confirmation.png');
+    await browser.execute(() => { document.querySelector('.recovery').style.visibility = ''; });
     await $('input[type="checkbox"]').click();
     await $('button=进入 PassValet').click();
     await $('button=手动添加').waitForDisplayed();

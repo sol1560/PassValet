@@ -7,10 +7,10 @@ todos:
     status: completed
   - id: macos-harness
     content: 建立 macOS Actions 和真实 Tauri、CLI、Chrome 扩展测试，先跑通最短完整流程
-    status: pending
+    status: in_progress
   - id: vault-authorization
     content: 修复并验证保险库、恢复、重新绑定、授权、撤销和本地通信安全
-    status: in_progress
+    status: pending
   - id: collection-rotation
     content: 完成七个服务的采集与安全轮换、模型调用、暂停取消和断线处理
     status: pending
