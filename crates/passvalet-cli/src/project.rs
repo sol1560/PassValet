@@ -321,6 +321,16 @@ pub fn merge_env_file(path: &Path, values: &BTreeMap<String, String>) -> Result<
             bail!("invalid environment variable name");
         }
     }
+    // Lock the stable directory inode, not the env file that rename replaces.
+    // This serializes cooperating inject processes without leaving a lock file.
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let directory = std::fs::File::open(parent)?;
+    directory
+        .lock()
+        .context("cannot lock env directory; nothing was written")?;
     let existing = match std::fs::read_to_string(path) {
         Ok(text) => text,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => String::new(),
@@ -485,6 +495,44 @@ pub fn config_path(dir: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn concurrent_injections_keep_every_writers_values() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(".env");
+        std::fs::write(&path, "KEEP=original\n".repeat(1000)).unwrap();
+        let barrier = std::sync::Barrier::new(8);
+        std::thread::scope(|scope| {
+            for index in 0..8 {
+                let path = &path;
+                let barrier = &barrier;
+                scope.spawn(move || {
+                    barrier.wait();
+                    merge_env_file(
+                        path,
+                        &BTreeMap::from([(format!("TOKEN_{index}"), format!("value-{index}"))]),
+                    )
+                    .unwrap();
+                });
+            }
+        });
+        let result = std::fs::read_to_string(path).unwrap();
+        for index in 0..8 {
+            assert!(
+                result
+                    .lines()
+                    .any(|line| line == format!("TOKEN_{index}=value-{index}")),
+                "a concurrent writer's value was lost"
+            );
+        }
+        assert_eq!(
+            result
+                .lines()
+                .filter(|line| *line == "KEEP=original")
+                .count(),
+            1000
+        );
+    }
 
     #[test]
     fn merge_handles_quoted_multiline_values_without_editing_their_contents() {

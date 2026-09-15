@@ -18,7 +18,9 @@
 | 34950601179 | GitHub Actions | M3/M5正式包 | done | 11项通过；release包完整性、CLI和dev隔离通过；已检查截图但白屏，继续诊断 |
 | 34952456878 | GitHub Actions | M5启动截图 | superseded | API仍显示queued，但取消接口称已完成；已用后续运行验证相同代码，不再反复取消 |
 | 34952976122 | GitHub Actions | M3/M4/M5回归 | done | 11项桌面和37项Rust通过，3项ignored；release完整性/隔离通过，5秒截图不再白屏但卡片溢出；日志/tmp/passvalet-release-second.log |
-| 34954128893 | GitHub Actions | M5选项布局 | running | 包含多行env、标题/网址脱敏、选项换行；需要下载检查setup-option-1/2和正式包截图 |
+| 34954128893 | GitHub Actions | M5选项布局 | done | 11项桌面与正式包通过；setup-option-1/2与正式包截图均已检查，无横向溢出 |
+| 34955006643 | GitHub Actions | M5 CLI故障复现 | done | 10通过1失败：完整注入通过，部分缺失却退出0，/tmp/passvalet-cli-failed.log |
+| 34955477283 | GitHub Actions | M5 CLI修复 | running | desktop通过，完整/部分/全部缺失三种注入已验证；release正在构建；未包含本地目录锁修复 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |
