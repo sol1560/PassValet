@@ -275,7 +275,7 @@ pub async fn inject(out: Option<String>, ttl: Option<u64>, to_stdout: bool) -> R
         for (k, v) in &values {
             println!("{k}={}", quote_env(v));
         }
-    } else {
+    } else if !values.is_empty() {
         let out_path = dir.join(out.unwrap_or(cfg.env_file.clone()));
         let n = merge_env_file(&out_path, &values)?;
         println!("wrote {} keys to {}", n, out_path.display());
@@ -288,6 +288,7 @@ pub async fn inject(out: Option<String>, ttl: Option<u64>, to_stdout: bool) -> R
         eprintln!(
             "Add them in PassValet (manual entry or 「添加服务」 auto-collection) and re-run."
         );
+        bail!("not all requested keys could be written");
     }
     Ok(())
 }
