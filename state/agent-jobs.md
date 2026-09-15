@@ -11,7 +11,10 @@
 | 34947480645 | GitHub Actions | M3修复验证 | done | 7项通过：重新绑定失败、成功和旧版兼容 |
 | 34947892659 | GitHub Actions | M3恢复码 | done | 8项通过：旧恢复码失效，新码能恢复数据 |
 | 34948250195 | GitHub Actions | M3授权拒绝 | done | 9项通过：UI拒绝后MCP不能读取；32项Rust测试通过 |
-| 34948658354 | GitHub Actions | M3扩展事件 | running | 检查普通本地连接不能发送扩展事件，修复前测试 |
+| 34948658354 | GitHub Actions | M3扩展事件 | done | 修复前普通连接未被拒绝，回归失败 |
+| 34949091189 | GitHub Actions | M3扩展修复 | done | 9项通过；新增当前连接单元测试通过 |
+| 34949434775 | GitHub Actions | M3并发 | done | 10项通过：两个客户端不能串用批准，全撤销生效 |
+| 34949906969 | GitHub Actions | M3超时 | done | 11项通过：超时请求无法继续批准，不生成会话 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |

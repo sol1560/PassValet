@@ -32,6 +32,7 @@ jobs:
         with:
           cache-on-failure: true
       - run: pnpm install --frozen-lockfile
+      - run: node --test tests/release-script.test.mjs
       - run: pnpm typecheck
       - run: pnpm --filter @passvalet/desktop build
       - run: pnpm build:extension
@@ -54,5 +55,57 @@ jobs:
         with:
           name: macos-e2e-screenshots
           path: test-results/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+  release-package:
+    needs: desktop
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      CARGO_TERM_COLOR: never
+      MACOSX_DEPLOYMENT_TARGET: '15.0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.22.0'
+          cache: pnpm
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-package
+          cache-on-failure: true
+      - run: pnpm install --frozen-lockfile
+      - name: Build release app, CLI, dmg and extension
+        run: bash scripts/build-release.sh
+      - name: Verify unpacked release and reject test commands
+        run: |
+          out=test-results/packages
+          mkdir -p "$out"
+          ditto -c -k --sequesterRsrc --keepParent target/release/bundle/macos/PassValet.app "$out/PassValet.app.zip"
+          cp target/release/bundle/dmg/*.dmg "$out/"
+          cp apps/extension/.output/*chrome*.zip "$out/"
+          cp target/release/passvalet LICENSE "$out/"
+          for zip in "$out/"*.zip; do unzip -t "$zip"; done
+          for dmg in "$out/"*.dmg; do hdiutil verify "$dmg"; done
+          unpacked="$(mktemp -d /tmp/passvalet-package.XXXXXX)"
+          trap 'rm -rf "$unpacked"' EXIT
+          ditto -x -k "$out/PassValet.app.zip" "$unpacked"
+          node tests/release-app.mjs "$unpacked/PassValet.app"
+          (cd "$out" && shasum -a 256 *.zip *.dmg passvalet LICENSE > SHA256SUMS)
+      - name: Unsigned test packages, not a published release
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-unsigned-test-packages
+          path: test-results/packages/*
+          if-no-files-found: error
+          retention-days: 7
+      - name: Release startup screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release-screenshot
+          path: test-results/release-startup.png
           if-no-files-found: ignore
           retention-days: 7
