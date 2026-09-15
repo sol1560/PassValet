@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { browser, $ } from '@wdio/globals';
 import { McpClient, body } from './mcp-client.mjs';
@@ -442,5 +442,55 @@ describe('真实桌面与MCP', () => {
       rmSync(file, { recursive: true });
       renameSync(backup, file);
     }
+    assert.equal(readdirSync(process.env.PASSVALET_HOME).some((name) => /^settings\..*\.tmp$/.test(name)), false);
+    const inode = statSync(file).ino;
+    try {
+      await browser.tauri.execute(({ core }, minutes) => core.invoke('settings_set', {
+        patch: { auto_lock_minutes: minutes },
+      }), previous.auto_lock_minutes + 1);
+      assert.equal(JSON.parse(readFileSync(file, 'utf8')).auto_lock_minutes, previous.auto_lock_minutes + 1);
+      assert.notEqual(statSync(file).ino, inode, '先写完临时文件再替换，不能原地截断配置');
+      assert.equal(statSync(file).mode & 0o777, 0o600);
+    } finally {
+      await browser.tauri.execute(({ core }, minutes) => core.invoke('settings_set', {
+        patch: { auto_lock_minutes: minutes },
+      }), previous.auto_lock_minutes);
+    }
+  });
+
+  it('copy-key-writes-the-real-macos-clipboard', async () => {
+    await $('button=密钥').click();
+    const card = await $('//div[contains(@class,"card")][.//span[@class="name" and text()="e2e"]]');
+    await card.waitForDisplayed();
+    execFileSync('pbcopy', [], { input: 'passvalet-clipboard-before-test' });
+    try {
+      await card.$('button=复制').click();
+      await browser.waitUntil(() => execFileSync('pbpaste').toString() === secret, {
+        timeout: 5_000, timeoutMsg: '复制按钮没有把选中的密钥写入系统剪贴板',
+      });
+      assert.equal((await card.$('.fp').getText()).includes(secret), false, '复制不应同时显示明文');
+    } finally {
+      execFileSync('pbcopy', [], { input: '' });
+    }
+  });
+
+  it('cancel-add-and-filter-audit-without-showing-secrets', async () => {
+    await $('button=手动添加').click();
+    assert.equal(await $('button=保存').isEnabled(), false);
+    await $('button=取消').click();
+    await browser.waitUntil(async () => !(await $('textarea').isExisting()));
+    await $('button=访问日志').click();
+    const filter = await $('input[placeholder="筛选：agent / 服务 / 事件"]');
+    await filter.setValue('e2e');
+    await browser.waitUntil(() => browser.execute(() => {
+      const rows = [...document.querySelectorAll('tbody tr')];
+      return rows.length > 0 && rows.every((row) => row.textContent.toLowerCase().includes('e2e'));
+    }));
+    assert.equal((await $('table').getText()).includes(secret), false);
+    await filter.setValue('no-such-audit-entry-for-test');
+    await $('p=没有记录。').waitForDisplayed();
+    await filter.setValue('e2e');
+    await browser.waitUntil(async () => (await $('tbody tr').isExisting()));
+    await browser.saveScreenshot('test-results/audit-filter.png');
   });
 });
