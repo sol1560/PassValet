@@ -254,7 +254,6 @@ impl Runner {
                 messages: messages.clone(),
                 tools: tool_defs.clone(),
                 max_tokens: self.max_tokens,
-                temperature: 0.1,
             };
             let response = tokio::select! {
                 biased;

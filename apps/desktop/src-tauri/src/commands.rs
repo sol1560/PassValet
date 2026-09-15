@@ -332,7 +332,6 @@ pub async fn test_provider(state: State<'_, Arc<AppState>>) -> Res<ProviderTestR
         messages: vec![passvalet_agent::provider::Message::user_text("ping")],
         tools: vec![],
         max_tokens: 16,
-        temperature: 0.0,
     };
     match provider.complete(&req).await {
         Ok(r) => Ok(ProviderTestResult {

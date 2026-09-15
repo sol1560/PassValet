@@ -5,8 +5,11 @@ use passvalet_agent::provider::{CompletionRequest, Message, ProviderConfig};
 use passvalet_agent::providers;
 use passvalet_agent::tools;
 
-fn key() -> Option<String> {
-    std::env::var("ZENMUX_API_KEY").ok().filter(|k| !k.is_empty())
+fn key() -> String {
+    std::env::var("ZENMUX_API_KEY")
+        .ok()
+        .filter(|k| !k.trim().is_empty())
+        .expect("真实模型测试需要专用 ZENMUX_API_KEY；缺少凭据不能算通过")
 }
 
 async fn tool_call_roundtrip(cfg: ProviderConfig) {
@@ -19,7 +22,6 @@ async fn tool_call_roundtrip(cfg: ProviderConfig) {
         )],
         tools: tools::all_tools(),
         max_tokens: 512,
-        temperature: 0.0,
     };
     let resp = provider.complete(&req).await.expect("completion");
     assert!(
@@ -36,7 +38,7 @@ async fn tool_call_roundtrip(cfg: ProviderConfig) {
 #[tokio::test]
 #[ignore]
 async fn openai_compat_gemini_flash() {
-    let Some(k) = key() else { return };
+    let k = key();
     let mut cfg = ProviderConfig::zenmux_default();
     cfg.api_key = Some(k);
     tool_call_roundtrip(cfg).await;
@@ -44,8 +46,18 @@ async fn openai_compat_gemini_flash() {
 
 #[tokio::test]
 #[ignore]
+async fn openai_compat_default_fallback() {
+    let mut cfg = ProviderConfig::zenmux_default();
+    cfg.api_key = Some(key());
+    cfg.models.remove(0);
+    assert!(!cfg.models.is_empty(), "默认模型应有备用选择");
+    tool_call_roundtrip(cfg).await;
+}
+
+#[tokio::test]
+#[ignore]
 async fn anthropic_messages_haiku() {
-    let Some(k) = key() else { return };
+    let k = key();
     let mut cfg = ProviderConfig::zenmux_anthropic();
     cfg.api_key = Some(k);
     tool_call_roundtrip(cfg).await;
@@ -54,7 +66,7 @@ async fn anthropic_messages_haiku() {
 #[tokio::test]
 #[ignore]
 async fn openai_compat_glm_flash() {
-    let Some(k) = key() else { return };
+    let k = key();
     let mut cfg = ProviderConfig::zenmux_default();
     cfg.api_key = Some(k);
     cfg.models = vec!["z-ai/glm-5.3-flash".into()];

@@ -86,7 +86,6 @@ impl LlmProvider for AnthropicMessages {
                 "name": t.name, "description": t.description, "input_schema": t.parameters
             })).collect::<Vec<_>>(),
             "max_tokens": req.max_tokens,
-            "temperature": req.temperature,
         });
         let mut r = self
             .http

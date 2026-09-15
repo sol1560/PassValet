@@ -82,7 +82,6 @@ pub struct CompletionRequest {
     pub messages: Vec<Message>,
     pub tools: Vec<ToolDef>,
     pub max_tokens: u32,
-    pub temperature: f32,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
