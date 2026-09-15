@@ -146,6 +146,9 @@ impl SecretSink for VaultSink {
         label: Option<String>,
     ) -> Result<bool, String> {
         let valid = services::value_matches_pattern(service, key_type, value);
+        if !valid {
+            return Ok(false);
+        }
         let mut metadata = serde_json::Map::new();
         metadata.insert("run_id".into(), serde_json::Value::String(run_id.to_string()));
         let mut v = self.vault.lock().unwrap();
@@ -281,4 +284,31 @@ pub fn start<R: Runtime>(
         let _ = runner.run(req).await;
     });
     Ok(run_id)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use passvalet_core::{crypto::SymKey, vault::InitParams, UnlockProviderKind};
+
+    #[tokio::test]
+    async fn invalid_capture_preserves_existing_secret() {
+        let mut vault = Vault::open_in_memory().unwrap();
+        vault.initialize(InitParams {
+            provider: UnlockProviderKind::TouchIdKeychain,
+            kek: SymKey::random(),
+            kek_salt: Vault::new_salt(),
+            credential_id: None,
+            user_handle: None,
+            with_recovery: false,
+        }).unwrap();
+        let sink = VaultSink {
+            vault: Arc::new(Mutex::new(vault)),
+            source: SecretSource::Collected,
+        };
+        let original = "https://original-project.supabase.co";
+        assert!(sink.store("test", "supabase", "url", original, None).await.unwrap());
+        assert!(!sink.store("test", "supabase", "url", "Copy URL", None).await.unwrap());
+        assert_eq!(sink.vault.lock().unwrap().read_secret_value("supabase", "url").unwrap().as_str(), original);
+    }
 }

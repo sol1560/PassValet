@@ -365,10 +365,11 @@ impl Runner {
                     "capture_secret" => {
                         let key_type = tc.arguments["key_type"].as_str().unwrap_or("").to_string();
                         let label = tc.arguments["label"].as_str().map(|s| s.to_string());
-                        let out = self
-                            .executor
-                            .call(&run_id, "capture_secret", tc.arguments.clone())
-                            .await;
+                        let out = if wanted.contains(&key_type) {
+                            self.executor.call(&run_id, "capture_secret", tc.arguments.clone()).await
+                        } else {
+                            Ok(ToolOutput::error("key_type is not part of this request"))
+                        };
                         let (text, is_error) = match out {
                             Ok(ToolOutput { secret: Some(value), .. }) if !value.trim().is_empty() => {
                                 let value = value.trim().to_string();
@@ -377,7 +378,7 @@ impl Runner {
                                     .store(&run_id, &req.service, &key_type, &value, label)
                                     .await
                                 {
-                                    Ok(valid) => {
+                                    Ok(true) => {
                                         if !captured.contains(&key_type) {
                                             captured.push(key_type.clone());
                                         }
@@ -385,22 +386,22 @@ impl Runner {
                                             run_id: run_id.clone(),
                                             key_type: key_type.clone(),
                                             fingerprint: redact::mask(&value),
-                                            valid,
+                                            valid: true,
                                         })
                                         .await;
                                         let remaining: Vec<&String> =
                                             wanted.iter().filter(|k| !captured.contains(k)).collect();
                                         (
                                             format!(
-                                                "Captured {key_type} ({} chars, preview {}){}. Remaining: {}",
+                                                "Captured {key_type} ({} chars, preview {}), format OK. Remaining: {}",
                                                 value.chars().count(),
                                                 redact::mask(&value),
-                                                if valid { ", format OK" } else { ", WARNING: format does not match the expected pattern — double-check you captured the right element" },
                                                 if remaining.is_empty() { "none — call done".to_string() } else { remaining.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(", ") }
                                             ),
                                             false,
                                         )
                                     }
+                                    Ok(false) => ("Value rejected: format does not match the expected pattern. Check the element and try again.".into(), true),
                                     Err(e) => (format!("vault refused the value: {e}"), true),
                                 }
                             }

@@ -99,6 +99,114 @@ impl LlmProvider for PausingProvider {
     }
 }
 
+struct CapturingProvider(&'static str);
+
+#[async_trait]
+impl LlmProvider for CapturingProvider {
+    async fn complete(&self, req: &CompletionRequest) -> Result<CompletionResponse, ProviderError> {
+        Ok(CompletionResponse {
+            tool_calls: vec![ToolCall {
+                id: "capture".into(),
+                name: if req.messages.len() == 1 {
+                    "capture_secret"
+                } else {
+                    "done"
+                }
+                .into(),
+                arguments: json!({"key_type": self.0}),
+            }],
+            ..Default::default()
+        })
+    }
+    fn kind(&self) -> ProviderKind {
+        ProviderKind::OpenaiCompat
+    }
+}
+
+struct CapturingBrowser;
+
+#[async_trait]
+impl BrowserExecutor for CapturingBrowser {
+    async fn session_begin(&self, _: &str, _: &str) -> Result<String, ExecutorError> {
+        Ok("1".into())
+    }
+    async fn call(&self, _: &str, _: &str, _: Value) -> Result<ToolOutput, ExecutorError> {
+        Ok(ToolOutput {
+            secret: Some("test-value".into()),
+            ..Default::default()
+        })
+    }
+    async fn session_end(&self, _: &str, _: bool) -> Result<(), ExecutorError> {
+        Ok(())
+    }
+}
+
+struct CaptureSink {
+    valid: bool,
+    writes: Mutex<Vec<String>>,
+}
+
+#[async_trait]
+impl SecretSink for CaptureSink {
+    async fn store(
+        &self,
+        _: &str,
+        _: &str,
+        key_type: &str,
+        _: &str,
+        _: Option<String>,
+    ) -> Result<bool, String> {
+        self.writes.lock().unwrap().push(key_type.into());
+        Ok(self.valid)
+    }
+}
+
+#[tokio::test]
+async fn only_requested_valid_captures_count_as_success() {
+    for (key_type, valid) in [("api_key", true), ("api_key", false), ("other_key", true)] {
+        let sink = Arc::new(CaptureSink {
+            valid,
+            writes: Mutex::new(vec![]),
+        });
+        let (events, _receiver) = mpsc::channel(16);
+        let outcome = Runner {
+            provider: Arc::new(CapturingProvider(key_type)),
+            executor: Arc::new(CapturingBrowser),
+            sink: sink.clone(),
+            events,
+            control: RunControl::default(),
+            ladder: ModelLadder::new(vec!["test".into()]),
+            max_tokens: 100,
+        }
+        .run(RunRequest {
+            run_id: "capture-test".into(),
+            service: "openai".into(),
+            kind: RunKind::Collect {
+                key_types: vec!["api_key".into()],
+            },
+            playbook: PlaybookSet::builtin().get("openai").unwrap().clone(),
+            hints: vec![],
+        })
+        .await;
+        if key_type == "api_key" && valid {
+            assert!(
+                matches!(outcome, RunOutcome::Success { captured, .. } if captured == vec!["api_key"])
+            );
+        } else {
+            assert!(
+                matches!(outcome, RunOutcome::Partial { captured, missing, .. } if captured.is_empty() && missing == vec!["api_key"]),
+                "invalid or unrelated captures must not satisfy the request"
+            );
+        }
+        if key_type != "api_key" {
+            assert!(
+                sink.writes.lock().unwrap().is_empty(),
+                "unrequested types must not reach storage"
+            );
+        }
+    }
+}
+
 #[tokio::test]
 async fn immediate_resume_and_abort_are_not_lost() {
     for abort in [false, true] {
