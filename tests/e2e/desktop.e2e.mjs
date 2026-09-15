@@ -679,6 +679,16 @@ describe('真实桌面与MCP', () => {
         await $(`h1=${label}`).waitForDisplayed();
         assert.equal(await browser.execute(() => document.documentElement.scrollWidth <= window.innerWidth), true,
           `${label}页面在最小窗口下不能横向溢出`);
+        assert.equal(await browser.execute(() => {
+          const main = document.querySelector('.main');
+          return main.scrollWidth <= main.clientWidth;
+        }), true, `${label}的内容不能藏在横向滚动区域内`);
+        if (name === 'audit') {
+          await $('tbody tr').waitForDisplayed();
+          const widths = await browser.execute(() => [...document.querySelector('tbody tr').cells]
+            .slice(2).map((cell) => cell.getBoundingClientRect().width));
+          assert.ok(widths.every((width) => width >= 90), 'Agent、密钥和详情列必须留出可读宽度');
+        }
         await browser.saveScreenshot(`test-results/minimum-${name}.png`);
       }
     } finally {

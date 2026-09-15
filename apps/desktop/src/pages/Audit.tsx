@@ -79,7 +79,7 @@ export default function Audit() {
         <input style={{ width: 240 }} placeholder="筛选：agent / 服务 / 事件" value={filter} onChange={(e) => setFilter(e.target.value)} />
       </div>
       <div className="card">
-        <table>
+        <table style={{ tableLayout: "fixed", overflowWrap: "anywhere" }}>
           <thead>
             <tr><th style={{ width: 150 }}>时间</th><th style={{ width: 110 }}>事件</th><th>Agent</th><th>密钥</th><th>详情</th></tr>
           </thead>
