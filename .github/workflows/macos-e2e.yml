@@ -33,10 +33,11 @@ jobs:
           cache-on-failure: true
       - run: pnpm install --frozen-lockfile
       - run: node --test tests/release-script.test.mjs
-      - name: Verify editor installation with real Codex CLI
+      - name: Verify editor installation with real Codex and Claude CLIs
         run: |
-          npm install --prefix "$RUNNER_TEMP/codex-install-test" --no-audit --no-fund @openai/codex@0.154.0
-          PASSVALET_TEST_CODEX_BIN="$RUNNER_TEMP/codex-install-test/node_modules/.bin" node --test tests/install-script.test.mjs
+          node --test tests/install-script.test.mjs
+          npm install --prefix "$RUNNER_TEMP/editor-install-test" --no-audit --no-fund @openai/codex@0.154.0 @anthropic-ai/claude-code@2.1.272
+          PASSVALET_TEST_CODEX_BIN="$RUNNER_TEMP/editor-install-test/node_modules/.bin" PASSVALET_TEST_CLAUDE_BIN="$RUNNER_TEMP/editor-install-test/node_modules/.bin" node --test tests/install-script.test.mjs
       - run: pnpm exec tsx --test tests/extension-safety.test.mjs
       - run: pnpm typecheck
       - run: pnpm --filter @passvalet/desktop build
