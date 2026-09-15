@@ -147,4 +147,31 @@ describe('真实桌面与MCP', () => {
     await browser.waitUntil(async () => (await $('.fp').getText()).includes(secret));
     await $('button=隐藏').click();
   });
+
+  it('regenerated-recovery-rejects-old-code-and-restores-data', async () => {
+    await $('button=设置').click();
+    await $('button=重新生成恢复密钥').click();
+    await $('.recovery').waitForDisplayed();
+    const oldRecovery = await $('.recovery').getText();
+    await $('button=我已保存').click();
+    await $('button=重新生成恢复密钥').click();
+    await $('.recovery').waitForDisplayed();
+    const newRecovery = await $('.recovery').getText();
+    assert.ok(oldRecovery !== newRecovery, '恢复密钥应发生变化');
+    await $('button=我已保存').click();
+    await $('button=密钥').click();
+    await $('button=锁定').click();
+    await $('button=使用恢复密钥').click();
+    await $('.onboard input').setValue(oldRecovery);
+    await $('.onboard').$('button=解锁').click();
+    await browser.waitUntil(() => browser.execute(() =>
+      [...document.querySelectorAll('.toast.error')].some((el) => el.textContent.includes('invalid recovery key'))));
+    assert.equal(await $('h2=保险库已锁定').isDisplayed(), true);
+    await $('.onboard input').setValue(newRecovery);
+    await $('.onboard').$('button=解锁').click();
+    await $('button=显示').waitForDisplayed();
+    await $('button=显示').click();
+    await browser.waitUntil(async () => (await $('.fp').getText()).includes(secret));
+    await $('button=隐藏').click();
+  });
 });

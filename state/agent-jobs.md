@@ -5,7 +5,10 @@
 | 34938681897 | GitHub Actions | M2 | done | 第二次运行找到创建参数错误；已读失败截图 |
 | 34941386442 | GitHub Actions | M2 | done | 创建/恢复确认通过；添加成功但测试选择器错误；已读截图 |
 | 34942291681 | GitHub Actions | M2 | done | 创建、隐藏/锁定通过；添加测试超时；Chrome已连接但误读隐藏的ID |
-| 34943849197 | GitHub Actions | M2 | running | 只打印驱动命令名与时间定位超时；修正Chrome隐藏ID检查；watch进程34925 |
+| 34943849197 | GitHub Actions | M2 | done | 定位每条驱动命令固定延迟，后由前端companion初始化修复 |
+| 34945942248 | GitHub Actions | M2 | done | attempt 1/2各5项真实端到端测试通过；第一轮截图已检查 |
+| 34947040427 | GitHub Actions | M3故障复现 | done | 5通过1失败：注入rebind数据库错误后无法解锁；失败截图已检查 |
+| 34947480645 | GitHub Actions | M3修复验证 | running | 独立保存新旧解锁密钥，验证失败、成功和旧版兼容 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |
