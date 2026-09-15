@@ -81,6 +81,38 @@ impl SecretSink for NoStore {
 
 struct PausingProvider;
 
+struct NeverReplies(tokio::sync::Notify);
+
+struct BurstProvider;
+
+#[async_trait]
+impl LlmProvider for BurstProvider {
+    async fn complete(&self, _: &CompletionRequest) -> Result<CompletionResponse, ProviderError> {
+        Ok(CompletionResponse {
+            tool_calls: (0..5).map(|i| ToolCall {
+                id: i.to_string(), name: "read_page".into(), arguments: json!({}),
+            }).collect(),
+            ..Default::default()
+        })
+    }
+
+    fn kind(&self) -> ProviderKind {
+        ProviderKind::OpenaiCompat
+    }
+}
+
+#[async_trait]
+impl LlmProvider for NeverReplies {
+    async fn complete(&self, _: &CompletionRequest) -> Result<CompletionResponse, ProviderError> {
+        self.0.notify_one();
+        std::future::pending().await
+    }
+
+    fn kind(&self) -> ProviderKind {
+        ProviderKind::OpenaiCompat
+    }
+}
+
 #[async_trait]
 impl LlmProvider for PausingProvider {
     async fn complete(&self, req: &CompletionRequest) -> Result<CompletionResponse, ProviderError> {
@@ -263,6 +295,64 @@ async fn immediate_resume_and_abort_are_not_lost() {
             );
         }
     }
+}
+
+#[tokio::test]
+async fn tool_batch_cannot_exceed_step_budget() {
+    let (events, mut receiver) = mpsc::channel(32);
+    let mut playbook = PlaybookSet::builtin().get("openai").unwrap().clone();
+    playbook.max_steps = 2;
+    let outcome = Runner {
+        provider: Arc::new(BurstProvider),
+        executor: Arc::new(BrowserWithPrivateImage),
+        sink: Arc::new(NoStore),
+        events,
+        control: RunControl::default(),
+        ladder: ModelLadder::new(vec!["test".into()]),
+        max_tokens: 100,
+    }.run(RunRequest {
+        run_id: "budget".into(),
+        service: "openai".into(),
+        kind: RunKind::Collect { key_types: vec!["api_key".into()] },
+        playbook,
+        hints: vec![],
+    }).await;
+    assert!(matches!(outcome, RunOutcome::Failed { reason } if reason.contains("step budget (2)")));
+    let mut steps = 0;
+    while let Ok(event) = receiver.try_recv() {
+        if matches!(event, RunEvent::Step { .. }) { steps += 1; }
+    }
+    assert_eq!(steps, 2, "do not execute the rest of an oversized tool batch");
+}
+
+#[tokio::test]
+async fn abort_does_not_wait_for_a_stalled_model() {
+    let provider = Arc::new(NeverReplies(tokio::sync::Notify::new()));
+    let control = RunControl::default();
+    let (events, _receiver) = mpsc::channel(16);
+    let runner = Runner {
+        provider: provider.clone(),
+        executor: Arc::new(BrowserWithPrivateImage),
+        sink: Arc::new(NoStore),
+        events,
+        control: control.clone(),
+        ladder: ModelLadder::new(vec!["test".into()]),
+        max_tokens: 100,
+    };
+    let task = tokio::spawn(runner.run(RunRequest {
+        run_id: "stalled-model".into(),
+        service: "openai".into(),
+        kind: RunKind::Collect { key_types: vec!["api_key".into()] },
+        playbook: PlaybookSet::builtin().get("openai").unwrap().clone(),
+        hints: vec![],
+    }));
+    provider.0.notified().await;
+    control.abort();
+    let outcome = tokio::time::timeout(std::time::Duration::from_secs(1), task)
+        .await
+        .expect("cancel must not wait for the model HTTP timeout")
+        .unwrap();
+    assert_eq!(outcome, RunOutcome::Aborted);
 }
 
 #[tokio::test]

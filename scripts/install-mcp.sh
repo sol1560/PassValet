@@ -19,14 +19,27 @@ echo "using $CLI"
 # Cursor
 mkdir -p ~/.cursor
 python3 - "$CLI" <<'EOF'
-import json, os, sys
+import json, os, sys, tempfile
 p = os.path.expanduser("~/.cursor/mcp.json")
 cfg = {}
 if os.path.exists(p):
-    try: cfg = json.load(open(p))
-    except Exception: cfg = {}
+    try:
+        with open(p, encoding="utf-8") as f:
+            cfg = json.load(f)
+    except (ValueError, OSError):
+        sys.exit("Cursor 配置无法读取或格式有误，已保留原文件，请修复后重试。")
 cfg.setdefault("mcpServers", {})["passvalet"] = {"command": sys.argv[1], "args": ["mcp"]}
-json.dump(cfg, open(p, "w"), indent=2)
+temp = None
+try:
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=os.path.dirname(p), delete=False) as f:
+        temp = f.name
+        json.dump(cfg, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(temp, p)
+finally:
+    if temp and os.path.exists(temp):
+        os.unlink(temp)
 print("cursor: wrote", p)
 EOF
 

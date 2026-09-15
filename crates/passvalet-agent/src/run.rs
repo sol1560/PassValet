@@ -100,6 +100,18 @@ impl RunControl {
     pub fn resume(&self) {
         self.resume.notify_waiters();
     }
+
+    async fn cancelled(&self) {
+        loop {
+            let notified = self.resume.notified();
+            tokio::pin!(notified);
+            notified.as_mut().enable();
+            if self.is_aborted() {
+                return;
+            }
+            notified.await;
+        }
+    }
 }
 
 pub struct Runner {
@@ -244,7 +256,12 @@ impl Runner {
                 max_tokens: self.max_tokens,
                 temperature: 0.1,
             };
-            let resp = match self.provider.complete(&creq).await {
+            let response = tokio::select! {
+                biased;
+                _ = self.control.cancelled() => return RunOutcome::Aborted,
+                response = self.provider.complete(&creq) => response,
+            };
+            let resp = match response {
                 Ok(r) => r,
                 Err(e) if e.is_retryable() => {
                     tracing::warn!("provider error: {e}");
@@ -294,6 +311,9 @@ impl Runner {
             let mut terminal: Option<RunOutcome> = None;
 
             for tc in &resp.tool_calls {
+                if step >= max_steps {
+                    return self.partial(&captured, &wanted, format!("step budget ({max_steps}) exhausted"));
+                }
                 step += 1;
                 if self.control.is_aborted() {
                     return RunOutcome::Aborted;
