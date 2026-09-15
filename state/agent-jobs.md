@@ -37,6 +37,7 @@
 | 34970967289 | GitHub Actions | M3/M4浏览器断线回归 | done | 12项桌面通过、1项失败：Chrome断线5秒后仍运行，已检查失败截图；watch进程251894已结束 |
 | 34971809402 | GitHub Actions | M3/M4浏览器断线修复 | done | 18项桌面及双架构包通过，Intel启动截图已检查；watch进程252989已结束 |
 | 34973813666 | GitHub Actions | M3/M4隐私及同时采集 | done | 12项桌面通过、1项失败，16个请求实际启动2个任务；隐私DOM检查及等待截图通过；watch进程257162已结束 |
+| 34974665891 | GitHub Actions | M3/M4同时采集修复 | running | 验证同一把锁检查并登记任务；watch进程258227，输出/tmp/passvalet-concurrency-fixed-watch.log |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |

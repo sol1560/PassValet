@@ -611,4 +611,42 @@ describe('真实桌面与MCP', () => {
     assert.equal(await browser.execute(() => document.documentElement.scrollWidth <= window.innerWidth), true);
     await browser.saveScreenshot('test-results/settings-mcp-config.png');
   });
+
+  it('idle-lock-hides-keys-and-unlock-preserves-their-values', async function () {
+    this.timeout(130_000);
+    const settings = await browser.tauri.execute(({ core }) => core.invoke('settings_get'));
+    const before = await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
+      service: 'collection_test', keyType: 'api_key',
+    }));
+    const authorized = await mcp.call('get_key', { service: 'collection_test', key_type: 'api_key' });
+    assert.ok(body(authorized).value === before, '自动锁定前客户端必须确实能读取同一密钥');
+    try {
+      await browser.tauri.execute(({ core }) => core.invoke('vault_unlock'));
+      const started = Date.now();
+      await browser.tauri.execute(({ core }) => core.invoke('settings_set', {
+        patch: { auto_lock_minutes: 1 },
+      }));
+      await $('button=密钥').click();
+      await browser.waitUntil(async () => (await browser.tauri.execute(({ core }) => core.invoke('vault_info'))).locked,
+        { timeout: 95_000, interval: 1_000, timeoutMsg: '一分钟空闲后应由真实定时器锁定保险库' });
+      assert.ok(Date.now() - started >= 59_000, '不能把一分钟误当成一秒或立即锁定');
+      await $('h2=保险库已锁定').waitForDisplayed();
+      assert.equal(await $('.fp').isExisting(), false);
+      const denied = await mcp.call('get_key', { service: 'collection_test', key_type: 'api_key' });
+      assert.equal(denied.isError, true, '已授权客户端也不能从锁定的保险库读取');
+      assert.equal(body(denied).code, 'vault_locked');
+      await browser.saveScreenshot('test-results/idle-locked.png');
+      await $('button=用 Touch ID 解锁').click();
+      await $('button=显示').waitForDisplayed();
+      const after = await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
+        service: 'collection_test', keyType: 'api_key',
+      }));
+      assert.ok(after === before, '自动锁定再解锁不能改变已保存的密钥');
+    } finally {
+      await browser.tauri.execute(({ core }, minutes) => core.invoke('settings_set', {
+        patch: { auto_lock_minutes: minutes },
+      }), settings.auto_lock_minutes);
+      await browser.tauri.execute(({ core }) => core.invoke('vault_unlock'));
+    }
+  });
 });
