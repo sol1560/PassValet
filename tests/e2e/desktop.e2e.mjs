@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { renameSync, statSync } from 'node:fs';
+import { execFileSync, spawn } from 'node:child_process';
+import { mkdtempSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { browser, $ } from '@wdio/globals';
 import { McpClient, body } from './mcp-client.mjs';
@@ -251,6 +251,48 @@ describe('真实桌面与MCP', () => {
       await browser.switchToWindow(mainWindow);
       first.close();
       second.close();
+    }
+  });
+
+  it('cli-injection-preserves-project-data-and-reports-missing-keys', async () => {
+    const dir = mkdtempSync('/tmp/passvalet-project-');
+    try {
+      for (const missing of [false, true]) {
+        const requests = [{ service: 'e2e', key_type: 'api_key', env_var: 'TEST_TOKEN' }];
+        if (missing) requests.push({ service: 'e2e', key_type: 'missing_key', env_var: 'MISSING_TOKEN' });
+        writeFileSync(path.join(dir, '.passvalet.json'), JSON.stringify({ project: 'cli-test', requests }));
+        writeFileSync(path.join(dir, '.env.local'), 'KEEP=original\n');
+        const child = spawn(path.resolve('target/debug/passvalet'), ['inject'], { cwd: dir, env: process.env });
+        let stdout = '';
+        let stderr = '';
+        child.stdout.on('data', (chunk) => { stdout += chunk; });
+        child.stderr.on('data', (chunk) => { stderr += chunk; });
+        const closed = new Promise((resolve, reject) => {
+          child.once('error', reject);
+          child.once('close', resolve);
+        });
+        closed.catch(() => {});
+        try {
+          await browser.waitUntil(async () => (await browser.getWindowHandles()).length > 1);
+          const prompt = (await browser.getWindowHandles()).find((handle) => handle !== mainWindow);
+          await browser.switchToWindow(prompt);
+          await $('button=批准').waitForDisplayed();
+          await $('button=批准').click();
+          const code = await closed;
+          assert.equal(code, missing ? 1 : 0, '有缺失项时CLI不能报成功');
+          const contents = readFileSync(path.join(dir, '.env.local'), 'utf8');
+          assert.ok(contents.includes('KEEP=original\n'), '保留原来的项目配置');
+          assert.ok(contents.includes(`TEST_TOKEN=${secret}\n`), '写入经批准的测试密钥');
+          assert.equal(statSync(path.join(dir, '.env.local')).mode & 0o777, 0o600);
+          assert.equal(stdout.includes(secret) || stderr.includes(secret), false, '普通注入不输出密钥');
+          if (missing) assert.ok(stderr.includes('missing_key'), '指出缺失的密钥类型');
+        } finally {
+          child.kill('SIGTERM');
+          await browser.switchToWindow(mainWindow);
+        }
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 
