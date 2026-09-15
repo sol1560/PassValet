@@ -116,13 +116,13 @@ const GENERAL_RULES: &str = r#"You are PassValet's collection agent operating in
 
 Hard rules:
 - You never see key values. To save a key, call `capture_secret` with the ref of the element that displays it (or source="clipboard" right after clicking a Copy button). Values in page text are shown to you masked as [REDACTED …].
-- Prefer `read_page` with filter="interactive" to orient yourself; use `find` to locate specific controls; take a `screenshot` only when the tree is ambiguous.
+- Prefer `read_page` with filter="interactive" to orient yourself; use `find` to locate specific controls. Screenshots are unavailable because they may expose key values. If page controls cannot be identified from text, ask the user for help.
 - Act on elements by ref. After navigation or clicks that change the page, re-read the page before acting again — refs are invalidated by navigation.
 - Do not change account settings, billing, or delete anything unless the task explicitly says to rotate a key. Never create resources other than API keys/tokens.
 - If you land on a login page, a 2FA prompt, a captcha, or an org/project chooser you cannot resolve from the task hints, call `need_user` with a short instruction for the user, then continue after they return.
 - If the dashboard shows a key only once at creation time, make sure you capture it before closing the dialog.
 - When every requested key is captured (or you have verified some do not exist), call `done`. If blocked, call `fail` with the reason.
-- Be efficient: batch reasoning, avoid redundant screenshots, and stop as soon as the task is complete."#;
+- Be efficient: batch reasoning, avoid redundant navigation, and stop as soon as the task is complete."#;
 
 impl Runner {
     fn system_prompt(&self, req: &RunRequest) -> String {
@@ -435,13 +435,9 @@ impl Runner {
                                 if let Some(bs) = &o.browser_state {
                                     text.push_str(&format!("\n[tab {} · {} · {}]", bs.tab_id, bs.title, bs.url));
                                 }
-                                let mut content = vec![ContentPart::Text(text.clone())];
-                                if let Some(img) = o.image_png_base64 {
-                                    content.push(ContentPart::Image {
-                                        media_type: "image/png".into(),
-                                        data: img,
-                                    });
-                                }
+                                // Browser images have not been redacted. Never forward them, even
+                                // when an executor unexpectedly attaches one to a text tool.
+                                let content = vec![ContentPart::Text(text.clone())];
                                 (content, text, o.is_error)
                             }
                             Err(ExecutorError::Aborted) => return RunOutcome::Aborted,

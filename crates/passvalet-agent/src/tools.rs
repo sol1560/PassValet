@@ -29,7 +29,6 @@ pub const BROWSER_TOOLS: &[&str] = &[
     "read_page",
     "find",
     "get_page_text",
-    "screenshot",
     "left_click",
     "double_click",
     "hover",
@@ -85,11 +84,6 @@ pub fn all_tools() -> Vec<ToolDef> {
         tool(
             "get_page_text",
             "Return the visible text of the page (secrets masked). Good for reading instructions or error banners.",
-            obj(json!({ "tab_id": tab_id }), &[]),
-        ),
-        tool(
-            "screenshot",
-            "Capture the viewport as an image. Use only when the accessibility tree is not enough (canvas, icons, layout questions).",
             obj(json!({ "tab_id": tab_id }), &[]),
         ),
         tool(
