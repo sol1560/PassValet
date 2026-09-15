@@ -886,6 +886,58 @@ mod tests {
     }
 
     #[test]
+    fn failed_rekey_preserves_old_key_recovery_and_secret() {
+        let (mut v, old_kek) = unlocked_vault();
+        let old_salt = v.kek_salt().unwrap();
+        let recovery = v.regenerate_recovery().unwrap();
+        v.put_secret(NewSecret {
+            service: "example".into(),
+            key_type: "api_key".into(),
+            value: "rekey-rollback-test-value".into(),
+            label: None,
+            source: SecretSource::Manual,
+            metadata: Default::default(),
+        })
+        .unwrap();
+        // 在重包密钥之后、提交新主密钥之前制造写入失败。
+        v.conn
+            .execute_batch(
+                "CREATE TRIGGER fail_rekey BEFORE UPDATE ON vault_meta
+                 BEGIN SELECT RAISE(ABORT, 'test metadata write failure'); END;",
+            )
+            .unwrap();
+        let new_kek = SymKey::random();
+        assert!(v
+            .rekey(
+                new_kek.clone(),
+                Vault::new_salt(),
+                UnlockProviderKind::PasskeyPrf,
+                Some("new-credential".into()),
+                None,
+                true,
+            )
+            .is_err());
+        assert_eq!(v.kek_salt().unwrap(), old_salt);
+        assert_eq!(
+            v.provider().unwrap(),
+            Some(UnlockProviderKind::TouchIdKeychain)
+        );
+        v.lock().unwrap();
+        assert!(v.unlock(new_kek).is_err());
+        v.unlock(old_kek).unwrap();
+        assert_eq!(
+            &v.read_secret_value("example", "api_key").unwrap()[..],
+            "rekey-rollback-test-value"
+        );
+        v.lock().unwrap();
+        v.unlock_with_recovery(&recovery).unwrap();
+        assert_eq!(
+            &v.read_secret_value("example", "api_key").unwrap()[..],
+            "rekey-rollback-test-value"
+        );
+    }
+
+    #[test]
     fn locked_vault_refuses_reads() {
         let (mut v, _) = unlocked_vault();
         v.lock().unwrap();
