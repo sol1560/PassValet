@@ -636,7 +636,9 @@ describe('真实桌面与MCP', () => {
       assert.equal(denied.isError, true, '已授权客户端也不能从锁定的保险库读取');
       assert.equal(body(denied).code, 'vault_locked');
       await browser.saveScreenshot('test-results/idle-locked.png');
-      await $('button=用 Touch ID 解锁').click();
+      await browser.execute(() => [...document.querySelectorAll('button')]
+        .find((button) => button.textContent.trim() === '用 Touch ID 解锁').focus());
+      await browser.keys('Enter');
       await $('button=显示').waitForDisplayed();
       const after = await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
         service: 'collection_test', keyType: 'api_key',
@@ -647,6 +649,25 @@ describe('真实桌面与MCP', () => {
         patch: { auto_lock_minutes: minutes },
       }), settings.auto_lock_minutes);
       await browser.tauri.execute(({ core }) => core.invoke('vault_unlock'));
+    }
+  });
+
+  it('main-pages-fit-the-minimum-window-size', async () => {
+    const original = await browser.getWindowSize();
+    const config = JSON.parse(readFileSync('apps/desktop/src-tauri/tauri.conf.json', 'utf8'));
+    const { minWidth, minHeight } = config.app.windows.find((window) => window.label === 'main');
+    try {
+      await browser.setWindowSize(minWidth, minHeight);
+      await browser.waitUntil(() => browser.execute((width) => window.innerWidth <= width, minWidth));
+      for (const [label, name] of [['密钥', 'keys'], ['自动采集', 'collect'], ['会话', 'sessions'], ['访问日志', 'audit'], ['设置', 'settings']]) {
+        await $(`button=${label}`).click();
+        await $(`h1=${label}`).waitForDisplayed();
+        assert.equal(await browser.execute(() => document.documentElement.scrollWidth <= window.innerWidth), true,
+          `${label}页面在最小窗口下不能横向溢出`);
+        await browser.saveScreenshot(`test-results/minimum-${name}.png`);
+      }
+    } finally {
+      await browser.setWindowSize(original.width, original.height);
     }
   });
 });
