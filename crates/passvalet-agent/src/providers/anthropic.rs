@@ -112,11 +112,11 @@ impl LlmProvider for AnthropicMessages {
         if status >= 400 {
             return Err(ProviderError::Status {
                 status,
-                body: text.chars().take(2000).collect(),
+                body: crate::redact::redact(&text).chars().take(2000).collect(),
             });
         }
         let v: Value = serde_json::from_str(&text)
-            .map_err(|e| ProviderError::Malformed(format!("{e}: {}", &text[..text.len().min(500)])))?;
+            .map_err(|e| ProviderError::Malformed(e.to_string()))?;
         let mut texts = Vec::new();
         let mut tool_calls = Vec::new();
         for b in v["content"].as_array().cloned().unwrap_or_default() {

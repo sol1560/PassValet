@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash, generateKeyPairSync } from 'node:crypto';
-import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { remote } from 'webdriverio';
 
@@ -8,8 +8,9 @@ import { remote } from 'webdriverio';
 export async function openExtension() {
   const home = process.env.PASSVALET_HOME;
   if (!home || !process.env.PASSVALET_SOCKET) throw new Error('扩展测试必须使用隔离目录');
-  const extension = path.join(home, 'extension');
-  const profile = path.join(home, 'chrome-profile');
+  const sessionDir = await mkdtemp(path.join(home, 'chrome-test-'));
+  const extension = path.join(sessionDir, 'extension');
+  const profile = path.join(sessionDir, 'chrome-profile');
   await cp(path.resolve('apps/extension/.output/chrome-mv3'), extension, { recursive: true });
   const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
   const key = publicKey.export({ type: 'spki', format: 'der' });

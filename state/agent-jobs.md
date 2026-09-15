@@ -22,6 +22,7 @@
 | 34955006643 | GitHub Actions | M5 CLI故障复现 | done | 10通过1失败：完整注入通过，部分缺失却退出0，/tmp/passvalet-cli-failed.log |
 | 34955477283 | GitHub Actions | M5 CLI修复 | done | desktop和release通过，完整/部分/全部缺失三种注入已验证；未包含目录锁修复 |
 | 34956448788 | GitHub Actions | M4/M5弹窗与目录锁 | done | Rust、12项真实桌面、正式包检查通过；包含macOS目录锁和弹窗拒绝回归 |
+| 34957618846 | GitHub Actions | M4完整采集测试 | done | 原有12项通过；第二次启动Chrome失败，改为独立目录后重测，尚未验证完整采集 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |
