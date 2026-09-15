@@ -214,7 +214,7 @@ pub static SERVICES: &[ServiceDef] = &[
                 "API 令牌",
                 "CLOUDFLARE_API_TOKEN",
                 true,
-                Some(r"^[A-Za-z0-9_-]{40}$")
+                Some(r"^(cf(?:ut|at)_[A-Za-z0-9_-]{41,}|[A-Za-z0-9_-]{40})$")
             ),
             kt!(
                 "account_id",
@@ -373,6 +373,35 @@ pub fn is_valid_id(s: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cloudflare_accepts_scannable_and_legacy_tokens() {
+        let payload = "A1".repeat(20);
+        for prefix in ["cfut", "cfat"] {
+            // 官方未公布校验段长度；这里只检查外形，不验证校验值。
+            for checksum in ["0", "abcdef"] {
+                assert!(value_matches_pattern(
+                    "cloudflare",
+                    "api_token",
+                    &format!("{prefix}_{payload}{checksum}")
+                ));
+            }
+            assert!(
+                !value_matches_pattern("cloudflare", "api_token", &format!("{prefix}_{payload}")),
+                "新格式还需要校验段"
+            );
+        }
+        assert!(value_matches_pattern("cloudflare", "api_token", &payload));
+        for invalid in [
+            "cfut_".to_string(),
+            format!("cfk_{payload}abcdef"),
+            format!("cfut_{payload}***"),
+            "A".repeat(39),
+            "A".repeat(41),
+        ] {
+            assert!(!value_matches_pattern("cloudflare", "api_token", &invalid));
+        }
+    }
 
     #[test]
     fn vercel_accepts_current_and_legacy_personal_tokens() {

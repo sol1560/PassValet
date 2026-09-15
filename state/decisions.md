@@ -41,3 +41,16 @@
 - 来源：https://developers.openai.com/api/reference/resources/admin/subresources/organization/subresources/projects/subresources/service_accounts/subresources/api_keys/methods/create 。当前没有调用此接口，没有创建或撤销真实资源。
 - 进一步核对本地实现：`VaultSink::store`只向metadata写入run_id，没有第三方密钥/项目/账号ID；`Vault::put_secret`覆盖同一(service,key_type)行的旧密文与metadata，没有旧版本记录。可靠轮换还需要保留旧版本、保存新版本和精确的第三方撤销入口，不能只开放现有通用click。
 - GitHub组织PAT管理端点撤销的是对该组织的访问，不等于删除用户PAT；官方说明仅GitHub Apps可调用。因此不能把它当成现有PAT的通用轮换接口。来源：https://docs.github.com/en/rest/orgs/personal-access-tokens 、https://docs.github.com/en/organizations/managing-programmatic-access-to-your-organization/reviewing-and-revoking-personal-access-tokens-in-your-organization 。没有调用管理端点。
+
+## Cloudflare新格式与管理权限
+
+- 官方格式文档在2026-04-20更新：用户令牌cfut_、账号令牌cfat_、全局密钥cfk_，前缀后40字符再加校验段；该页未说明校验段长度/算法。继续兼容旧40字符令牌，新增前两类的外形识别，不接受新全局密钥作为api_token；两处文字隐藏规则覆盖三种新前缀。只检查外形，不验证checksum或真实权限。来源：https://developers.cloudflare.com/fundamentals/api/get-started/token-formats/ 。
+- 官方创建教程说明 `/user/tokens/verify` 能返回该令牌的唯一id，但创建后续用户令牌需要单独的“Create additional tokens”模板权限；普通Workers令牌不具备它。Cloudflare建议此管理令牌不要再加其他权限，因为它可创建访问用户任意资源的令牌。不能自动给普通采集令牌增加管理权限来实现轮换。来源：https://developers.cloudflare.com/fundamentals/api/get-started/create-token/ 、https://developers.cloudflare.com/fundamentals/api/how-to/create-via-api/ 。没有创建或撤销任何真实资源。
+
+## 首个安全轮换实现的前提
+
+- 直接检查实现和上述官方资料后，固定浏览器操作与另行托管管理凭据仍有高影响取舍，已就这个具体问题咨询oracle。选择前者作为首个Cloudflare切片，不默默增加高权限管理凭据；现有MCP也没有“永不可分发管理凭据”类别。oracle没有改代码或运行网站。
+- 必须先在获授权测试账号验证登录主体、旧值verify所得id、独立创建请求及新值与新id的对应关系、精确撤销请求及权限/有效期。仅限制origin或看见名称不足以证明这些事实，不能回退到通用模型点击。
+- 后续用专用持久化轮换记录和加密的新旧值暂存，不必先建立通用历史版本系统。新值验证并可靠提交后，后端才授予撤销固定old_id的能力；暂存需纳入重新绑定与恢复，所有对同一密钥槽位的写操作需防止并发覆盖。
+- 创建响应丢失时保留旧值，报告可能存在孤立新令牌；撤销响应丢失时保留新旧数据并核实固定旧id。不能把网络错误、401或403当作撤销成功，不自动删除新值。保证的是应用失败不导致零把可恢复的可用凭据，不是声称可恢复第三方尚未返回的一次性新值。
+- 当前缺少指定Cloudflare测试账号、可操作资源范围和允许撤销的旧令牌。先取得该具体授权并核实请求，再实现适配器；当前保护不是轮换功能完成，也不能声称仅差测试凭据。
