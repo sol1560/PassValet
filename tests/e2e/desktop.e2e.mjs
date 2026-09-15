@@ -491,6 +491,42 @@ describe('真实桌面与MCP', () => {
     await $('p=没有记录。').waitForDisplayed();
     await filter.setValue('e2e');
     await browser.waitUntil(async () => (await $('tbody tr').isExisting()));
+    await browser.waitUntil(async () => !(await $('.toast').isExisting()));
     await browser.saveScreenshot('test-results/audit-filter.png');
+  });
+
+  it('delete-requires-confirmation-and-cancel-preserves-the-key', async () => {
+    await $('button=密钥').click();
+    const selector = '//div[contains(@class,"card")][.//span[@class="name" and text()="e2e"]]';
+    for (const approve of [false, true]) {
+      const card = await $(selector);
+      await card.waitForDisplayed();
+      const remove = await card.$('button=删除');
+      const clicked = remove.click();
+      clicked.catch(() => {});
+      try {
+        await browser.waitUntil(async () => {
+          try { return (await browser.getAlertText()).includes('删除 e2e / api_key'); }
+          catch { return false; }
+        }, { timeout: 5_000, timeoutMsg: '删除前应确认具体服务与密钥类型' });
+        if (approve) await browser.acceptAlert();
+        else await browser.dismissAlert();
+      } catch (error) {
+        await browser.dismissAlert().catch(() => {});
+        throw error;
+      } finally {
+        await clicked;
+      }
+      if (approve) {
+        await browser.waitUntil(async () => !(await $(selector).isExisting()));
+        const saved = await browser.tauri.execute(({ core }) => core.invoke('list_secrets'));
+        assert.equal(saved.some((item) => item.service === 'e2e'), false);
+      } else {
+        const value = await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
+          service: 'e2e', keyType: 'api_key',
+        }));
+        assert.ok(value === secret, '取消删除后原密钥必须仍可读取');
+      }
+    }
   });
 });

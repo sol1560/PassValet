@@ -45,8 +45,9 @@ EOF
 
 # Claude Code
 if command -v claude >/dev/null 2>&1; then
-  claude mcp remove passvalet >/dev/null 2>&1 || true
-  claude mcp add passvalet -- "$CLI" mcp && echo "claude code: registered"
+  claude mcp remove --scope user passvalet >/dev/null 2>&1 || true
+  claude mcp add --scope user passvalet -- "$CLI" mcp
+  echo "claude code: registered"
 fi
 
 # Codex

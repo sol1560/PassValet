@@ -12,13 +12,19 @@ use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
 #[derive(Default)]
-struct RecordingProvider(Mutex<Vec<CompletionRequest>>);
+struct RecordingProvider {
+    requests: Mutex<Vec<CompletionRequest>>,
+    rate_limit_first: bool,
+}
 
 #[async_trait]
 impl LlmProvider for RecordingProvider {
     async fn complete(&self, req: &CompletionRequest) -> Result<CompletionResponse, ProviderError> {
-        let mut requests = self.0.lock().unwrap();
+        let mut requests = self.requests.lock().unwrap();
         requests.push(req.clone());
+        if self.rate_limit_first && requests.len() == 1 {
+            return Err(ProviderError::RateLimited);
+        }
         let name = if requests.len() == 1 {
             "read_page"
         } else {
@@ -394,7 +400,7 @@ async fn unredacted_browser_images_never_reach_the_model() {
             hints: vec![],
         })
         .await;
-    let requests = provider.0.lock().unwrap();
+    let requests = provider.requests.lock().unwrap();
     assert_eq!(
         requests.len(),
         2,
@@ -430,4 +436,58 @@ async fn unredacted_browser_images_never_reach_the_model() {
         }
         assert!(!request.tools.iter().any(|tool| tool.name == "screenshot"));
     }
+}
+
+#[tokio::test]
+async fn rate_limit_switches_to_the_fallback_without_claiming_capture() {
+    let provider = Arc::new(RecordingProvider {
+        rate_limit_first: true,
+        ..Default::default()
+    });
+    let (events, mut receiver) = mpsc::channel(16);
+    let runner = Runner {
+        provider: provider.clone(),
+        executor: Arc::new(BrowserWithPrivateImage),
+        sink: Arc::new(NoStore),
+        events,
+        control: RunControl::default(),
+        ladder: ModelLadder::new(vec!["first".into(), "fallback".into()]),
+        max_tokens: 100,
+    };
+    let outcome = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        runner.run(RunRequest {
+            run_id: "rate-limit".into(),
+            service: "openai".into(),
+            kind: RunKind::Collect {
+                key_types: vec!["api_key".into()],
+            },
+            playbook: PlaybookSet::builtin().get("openai").unwrap().clone(),
+            hints: vec![],
+        }),
+    )
+    .await
+    .expect("应立即切换备用模型，而不是重复调用被限流的模型");
+    assert!(
+        matches!(outcome, RunOutcome::Partial { captured, missing, .. }
+        if captured.is_empty() && missing == vec!["api_key"])
+    );
+    assert_eq!(
+        provider
+            .requests
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|r| r.model.clone())
+            .collect::<Vec<_>>(),
+        vec!["first", "fallback"]
+    );
+    assert!(matches!(
+        receiver.recv().await,
+        Some(RunEvent::Started { .. })
+    ));
+    assert!(
+        matches!(receiver.recv().await, Some(RunEvent::Escalated { from, to, .. })
+        if from == "first" && to == "fallback")
+    );
 }
