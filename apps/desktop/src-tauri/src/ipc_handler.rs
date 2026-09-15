@@ -405,7 +405,7 @@ async fn report_key_invalid<R: Runtime>(
         },
     };
     match outcome {
-        RunOutcome::Success { .. } | RunOutcome::Partial { .. } => {
+        RunOutcome::Success { .. } => {
             let value = state.with_vault(|v| {
                 v.read_key_for_session(&p.session_token, &p.service, &p.key_type)
             })?;
@@ -417,12 +417,14 @@ async fn report_key_invalid<R: Runtime>(
                 message: None,
             })
         }
-        RunOutcome::Failed { reason } => Ok(ReportKeyInvalidResult {
-            outcome: RotationOutcome::Failed,
-            value: None,
-            env_var: None,
-            message: Some(reason),
-        }),
+        RunOutcome::Failed { reason } | RunOutcome::Partial { reason, .. } => {
+            Ok(ReportKeyInvalidResult {
+                outcome: RotationOutcome::Failed,
+                value: None,
+                env_var: None,
+                message: Some(reason),
+            })
+        }
         RunOutcome::Aborted => Ok(ReportKeyInvalidResult {
             outcome: RotationOutcome::Denied,
             value: None,
