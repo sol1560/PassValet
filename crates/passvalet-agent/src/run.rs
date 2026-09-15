@@ -326,6 +326,11 @@ impl Runner {
                     }
                     tools::NEED_USER => {
                         let message = tc.arguments["message"].as_str().unwrap_or("").to_string();
+                        // Register before publishing the pause so an immediate reply is not lost.
+                        let resume = self.control.resume.clone();
+                        let notified = resume.notified();
+                        tokio::pin!(notified);
+                        notified.as_mut().enable();
                         self.emit(RunEvent::NeedUser {
                             run_id: run_id.clone(),
                             message: message.clone(),
@@ -341,8 +346,10 @@ impl Runner {
                         })
                         .await;
                         // Wait for resume or abort.
-                        let resume = self.control.resume.clone();
-                        resume.notified().await;
+                        if self.control.is_aborted() {
+                            return RunOutcome::Aborted;
+                        }
+                        notified.await;
                         if self.control.is_aborted() {
                             return RunOutcome::Aborted;
                         }

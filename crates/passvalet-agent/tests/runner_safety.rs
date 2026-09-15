@@ -5,7 +5,9 @@ use passvalet_agent::executor::{BrowserExecutor, ExecutorError, ToolOutput};
 use passvalet_agent::ladder::ModelLadder;
 use passvalet_agent::playbook::PlaybookSet;
 use passvalet_agent::provider::*;
-use passvalet_agent::run::{RunControl, RunKind, RunRequest, Runner, SecretSink};
+use passvalet_agent::run::{
+    RunControl, RunEvent, RunKind, RunOutcome, RunRequest, Runner, SecretSink,
+};
 use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
@@ -69,6 +71,84 @@ impl SecretSink for NoStore {
         _: Option<String>,
     ) -> Result<bool, String> {
         panic!("read-only test must not write secrets")
+    }
+}
+
+struct PausingProvider;
+
+#[async_trait]
+impl LlmProvider for PausingProvider {
+    async fn complete(&self, req: &CompletionRequest) -> Result<CompletionResponse, ProviderError> {
+        Ok(CompletionResponse {
+            tool_calls: vec![ToolCall {
+                id: "pause".into(),
+                name: if req.messages.len() == 1 {
+                    "need_user"
+                } else {
+                    "done"
+                }
+                .into(),
+                arguments: json!({}),
+            }],
+            ..Default::default()
+        })
+    }
+
+    fn kind(&self) -> ProviderKind {
+        ProviderKind::OpenaiCompat
+    }
+}
+
+#[tokio::test]
+async fn immediate_resume_and_abort_are_not_lost() {
+    for abort in [false, true] {
+        // Started occupies the slot, so sending Step blocks until we consume NeedUser.
+        let (events, mut receiver) = mpsc::channel(1);
+        let control = RunControl::default();
+        let runner = Runner {
+            provider: Arc::new(PausingProvider),
+            executor: Arc::new(BrowserWithPrivateImage),
+            sink: Arc::new(NoStore),
+            events,
+            control: control.clone(),
+            ladder: ModelLadder::new(vec!["test".into()]),
+            max_tokens: 100,
+        };
+        let task = tokio::spawn(runner.run(RunRequest {
+            run_id: "pause-test".into(),
+            service: "openai".into(),
+            kind: RunKind::Collect {
+                key_types: vec!["api_key".into()],
+            },
+            playbook: PlaybookSet::builtin().get("openai").unwrap().clone(),
+            hints: vec![],
+        }));
+        assert!(matches!(
+            receiver.recv().await,
+            Some(RunEvent::Started { .. })
+        ));
+        assert!(matches!(
+            receiver.recv().await,
+            Some(RunEvent::NeedUser { .. })
+        ));
+        if abort {
+            control.abort();
+        } else {
+            control.resume();
+        }
+        let result = tokio::time::timeout(std::time::Duration::from_secs(1), async {
+            while receiver.recv().await.is_some() {}
+            task.await.unwrap()
+        })
+        .await
+        .expect("early resume/abort must not leave the run waiting forever");
+        if abort {
+            assert_eq!(result, RunOutcome::Aborted);
+        } else {
+            assert!(
+                matches!(result, RunOutcome::Partial { missing, .. } if missing == vec!["api_key"])
+            );
+        }
     }
 }
 
