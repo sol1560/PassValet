@@ -10,11 +10,23 @@ use crate::settings::Settings;
 
 const KEYCHAIN_SERVICE: &str = "ai.passvalet.vault";
 
-/// Keychain account: `kek`, or `kek@<PASSVALET_HOME>` so test vaults do not share a key.
-fn keychain_account() -> String {
+// Each database generation references its own entry. Never overwrite a key before SQLite commits.
+fn keychain_slot(salt: Option<&[u8]>) -> String {
+    match salt {
+        Some(salt) => format!(
+            "kek-{}",
+            salt.iter().map(|b| format!("{b:02x}")).collect::<String>()
+        ),
+        None => "kek".to_string(), // Legacy vaults used a fixed entry.
+    }
+}
+
+/// PASSVALET_HOME keeps test vaults separate from the user's Keychain entry.
+fn keychain_account(salt: Option<&[u8]>) -> String {
+    let slot = keychain_slot(salt);
     match std::env::var("PASSVALET_HOME") {
-        Ok(h) if !h.is_empty() => format!("kek@{h}"),
-        _ => "kek".to_string(),
+        Ok(h) if !h.is_empty() => format!("{slot}@{h}"),
+        _ => slot,
     }
 }
 
@@ -53,36 +65,55 @@ fn any_window<R: Runtime>(app: &tauri::AppHandle<R>) -> Option<tauri::Window<R>>
 
 /// Debug + PASSVALET_DEV_SKIP_PRESENCE: keep the KEK in a file under PASSVALET_HOME instead of the
 /// Keychain, so unsigned dev builds do not trigger Keychain ACL dialogs in automated tests.
-fn dev_kek_file() -> Option<std::path::PathBuf> {
+fn dev_kek_file(salt: Option<&[u8]>) -> Option<std::path::PathBuf> {
     if dev_skip_presence() {
-        Some(passvalet_core::paths::app_dir().join("dev-kek.bin"))
+        Some(passvalet_core::paths::app_dir().join(format!("dev-{}.bin", keychain_slot(salt))))
     } else {
         None
     }
 }
 
-fn keychain_read() -> Result<Option<Kek>, UnlockError> {
-    if let Some(f) = dev_kek_file() {
-        return match std::fs::read(&f) {
-            Ok(b) => Ok(Some(SymKey::from_slice(&b)?)),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-            Err(e) => Err(UnlockError::Keychain(e.to_string())),
+fn keychain_read(salt: &[u8]) -> Result<Option<Kek>, UnlockError> {
+    for slot in [Some(salt), None] {
+        let bytes = if let Some(f) = dev_kek_file(slot) {
+            match std::fs::read(&f) {
+                Ok(b) => b,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(e) => return Err(UnlockError::Keychain(e.to_string())),
+            }
+        } else {
+            match security_framework::passwords::get_generic_password(
+                KEYCHAIN_SERVICE,
+                &keychain_account(slot),
+            ) {
+                Ok(b) => b,
+                Err(e) if e.code() == -25300 => continue, // errSecItemNotFound
+                Err(e) => return Err(UnlockError::Keychain(e.to_string())),
+            }
         };
+        return Ok(Some(SymKey::from_slice(&bytes)?));
     }
-    match security_framework::passwords::get_generic_password(KEYCHAIN_SERVICE, &keychain_account()) {
-        Ok(bytes) => Ok(Some(SymKey::from_slice(&bytes)?)),
-        Err(e) if e.code() == -25300 => Ok(None), // errSecItemNotFound
-        Err(e) => Err(UnlockError::Keychain(e.to_string())),
-    }
+    Ok(None)
 }
 
-fn keychain_write(kek: &Kek) -> Result<(), UnlockError> {
-    if let Some(f) = dev_kek_file() {
-        return std::fs::write(&f, kek.as_bytes()).map_err(|e| UnlockError::Keychain(e.to_string()));
+fn keychain_write(kek: &Kek, salt: &[u8]) -> Result<(), UnlockError> {
+    if let Some(f) = dev_kek_file(Some(salt)) {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(f)
+            .map_err(|e| UnlockError::Keychain(e.to_string()))?;
+        file.write_all(kek.as_bytes())
+            .and_then(|()| file.sync_all())
+            .map_err(|e| UnlockError::Keychain(e.to_string()))?;
+        return Ok(());
     }
     security_framework::passwords::set_generic_password(
         KEYCHAIN_SERVICE,
-        &keychain_account(),
+        &keychain_account(Some(salt)),
         kek.as_bytes(),
     )
     .map_err(|e| UnlockError::Keychain(e.to_string()))
@@ -90,12 +121,18 @@ fn keychain_write(kek: &Kek) -> Result<(), UnlockError> {
 
 #[allow(dead_code)]
 pub fn keychain_delete() {
-    let _ = security_framework::passwords::delete_generic_password(KEYCHAIN_SERVICE, &keychain_account());
+    let _ = security_framework::passwords::delete_generic_password(
+        KEYCHAIN_SERVICE,
+        &keychain_account(None),
+    );
 }
 
 /// Debug builds only: `PASSVALET_DEV_SKIP_PRESENCE=1` bypasses Touch ID for automated tests.
 pub fn dev_skip_presence() -> bool {
-    cfg!(debug_assertions) && std::env::var("PASSVALET_DEV_SKIP_PRESENCE").map(|v| v == "1").unwrap_or(false)
+    cfg!(debug_assertions)
+        && std::env::var("PASSVALET_DEV_SKIP_PRESENCE")
+            .map(|v| v == "1")
+            .unwrap_or(false)
 }
 
 /// Ask for user presence (Touch ID, password fallback).
@@ -129,7 +166,7 @@ pub async fn setup<R: Runtime>(
         UnlockProviderKind::TouchIdKeychain => {
             verify_presence("设置 PassValet 保险库").await?;
             let kek = SymKey::random();
-            keychain_write(&kek)?;
+            keychain_write(&kek, &salt)?;
             let text = vault.lock().unwrap().initialize(InitParams {
                 provider,
                 kek,
@@ -188,7 +225,7 @@ pub async fn unlock<R: Runtime>(
     match provider {
         UnlockProviderKind::TouchIdKeychain => {
             verify_presence(reason).await?;
-            let kek = keychain_read()?.ok_or_else(|| {
+            let kek = keychain_read(&salt)?.ok_or_else(|| {
                 UnlockError::Keychain("保险库主密钥不在钥匙串中，请使用恢复密钥".into())
             })?;
             vault.lock().unwrap().unlock(kek)?;
@@ -226,8 +263,11 @@ pub async fn rebind<R: Runtime>(
         UnlockProviderKind::TouchIdKeychain => {
             verify_presence("重新绑定 Touch ID").await?;
             let kek = SymKey::random();
-            keychain_write(&kek)?;
-            let text = vault.lock().unwrap().rekey(kek, salt, provider, None, None, true)?;
+            keychain_write(&kek, &salt)?;
+            let text = vault
+                .lock()
+                .unwrap()
+                .rekey(kek, salt, provider, None, None, true)?;
             Ok(text.unwrap_or_default())
         }
         UnlockProviderKind::PasskeyPrf => {
@@ -247,10 +287,14 @@ pub async fn rebind<R: Runtime>(
                 return Err(UnlockError::Passkey("passkey 未返回 PRF 输出".into()));
             }
             let kek = crypto::derive_kek(&reg.prf_output, &salt)?;
-            let text = vault
-                .lock()
-                .unwrap()
-                .rekey(kek, salt, provider, Some(reg.id), Some(user_id), true)?;
+            let text = vault.lock().unwrap().rekey(
+                kek,
+                salt,
+                provider,
+                Some(reg.id),
+                Some(user_id),
+                true,
+            )?;
             Ok(text.unwrap_or_default())
         }
     }
