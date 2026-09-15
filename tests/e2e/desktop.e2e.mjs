@@ -435,6 +435,23 @@ describe('真实桌面与MCP', () => {
       fixture.verify(await browser.tauri.execute(({ core }) => core.invoke('reveal_secret', {
         service: 'collection_test', keyType: 'api_key',
       })));
+      fixture.stall();
+      const starts = await Promise.all(Array.from({ length: 16 }, () =>
+        ipcCall(process.env.PASSVALET_SOCKET, 'start_collection', {
+          service: 'collection_test', key_types: ['api_key'],
+        })));
+      const accepted = starts.filter((reply) => reply.result?.run_id);
+      try {
+        assert.equal(accepted.length, 1, '同时请求采集只能启动一个任务');
+        assert.equal(starts.filter((reply) => reply.error?.message.includes('已有一个采集任务')).length, 15);
+        await browser.waitUntil(() => fixture.modelWaiting, { timeout: 10_000 });
+      } finally {
+        for (const reply of accepted) {
+          await browser.tauri.execute(({ core }, runId) => core.invoke('abort_run', { runId }), reply.result.run_id);
+        }
+        await browser.waitUntil(async () => (await browser.tauri.execute(({ core }) => core.invoke('list_runs')))
+          .every((r) => r.finished), { timeout: 5_000 });
+      }
       fixture.finishWithoutCapture();
       for (const rotation of [false, true]) {
         const pending = rotation
