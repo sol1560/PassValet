@@ -72,7 +72,8 @@ passvalet inject          # 弹窗确认后写入 .env.local
 - key 只存本机 `~/Library/Application Support/PassValet/vault.sqlite`，每条 secret 有独立 DEK，DEK 用 KEK 包裹；KEK 在解锁期间只存在内存。
 - KEK 来源二选一：Touch ID + 钥匙串（随机 KEK 存登录钥匙串），或原生 passkey 的 PRF 输出经 HKDF 派生（见 `docs/passkey-setup.md`）。
 - 任何授权都需一次用户在场验证；session token 有过期时间，撤销后立即失效。
-- 采集时模型只见到 accessibility tree 文本（两层脱敏：扩展侧 + app 侧），key 的明文由扩展直接读元素/剪贴板并送入保险库；结束后关闭标签页、清空引用与剪贴板钩子，对话历史随 run 结束丢弃。
+- 自动采集不向模型发送网页截图；模型使用页面文字和控件引用，无法识别控件时需用户协助。已识别的密钥格式在扩展和应用两处遮盖，但规则匹配不能保证识别所有敏感文字。捕获的 key 由扩展直接送入保险库，不作为工具结果发送给模型。
+- 采集结束后清空引用与剪贴板钩子，对话历史随 run 结束丢弃；失败或部分完成时保留标签页供用户处理。
 - 每次读取写审计日志：谁、何时、哪个 key。
 
 ## 开发

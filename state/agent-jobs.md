@@ -15,6 +15,7 @@
 | 34949091189 | GitHub Actions | M3扩展修复 | done | 9项通过；新增当前连接单元测试通过 |
 | 34949434775 | GitHub Actions | M3并发 | done | 10项通过：两个客户端不能串用批准，全撤销生效 |
 | 34949906969 | GitHub Actions | M3超时 | done | 11项通过：超时请求无法继续批准，不生成会话 |
+| 34950601179 | GitHub Actions | M3/M5正式包 | running | 先跑11项桌面测试，再构建release并解包启动；不要在运行期间推送取消它 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |
