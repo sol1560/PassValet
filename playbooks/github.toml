@@ -8,8 +8,9 @@ max_steps = 45
 [collect]
 instructions = """
 GitHub personal access tokens:
-- Fine-grained tokens: https://github.com/settings/personal-access-tokens (Settings → Developer settings → Personal access tokens → Fine-grained tokens). Click "Generate new token". Name "passvalet", expiration 90 days, Repository access = "All repositories" unless hints specify repos, Permissions: Contents Read and write, Metadata Read, Pull requests Read and write, Actions Read. Click "Generate token". GitHub may ask for the password/2FA — call need_user if so. The token (github_pat_…) is shown once: click the copy icon and call capture_secret with source="clipboard" (or capture the element).
-- If fine-grained tokens are disabled for the org, fall back to classic: https://github.com/settings/tokens/new with scopes repo, workflow, read:org; token starts with ghp_.
+- Fine-grained tokens: https://github.com/settings/personal-access-tokens (Settings → Developer settings → Personal access tokens → Fine-grained tokens). Before generating a token, identify the resource owner, selected repositories, permissions and expiration from the user's instructions. If any are unspecified, call need_user and ask the user to configure the token form. Never default to all repositories or add write/workflow permissions merely because they are available.
+- Click "Generate new token", name it "passvalet", and apply only the user's selected scope. Check the final form before generating. GitHub may ask for the password/2FA — call need_user if so. The token (github_pat_…) is shown once: click the copy icon and call capture_secret with source="clipboard" (or capture the element).
+- If fine-grained tokens are unavailable or blocked by the organization, call need_user to explain the restriction. Do not automatically fall back to a classic token or broader permissions.
 """
 
 [rotate]

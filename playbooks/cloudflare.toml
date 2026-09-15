@@ -8,7 +8,7 @@ max_steps = 45
 [collect]
 instructions = """
 Cloudflare dashboard:
-- API tokens: https://dash.cloudflare.com/profile/api-tokens. Click "Create Token". Prefer the template "Edit Cloudflare Workers" (covers Workers, KV, D1, Pages for the account); if the user hints name a different template use that. Keep defaults for account/zone resources (all accounts / all zones is acceptable), click "Continue to summary", then "Create Token". The token is shown once — click Copy and call capture_secret with source="clipboard" (or capture the element). Do NOT use the "Global API Key".
+- API tokens: https://dash.cloudflare.com/profile/api-tokens. Before creating a token, identify the requested account, zones, permissions and expiration from the user's instructions. If any are unspecified, call need_user and ask the user to configure them in the token form before continuing. Do not choose a template or grant access to all accounts/zones by default. Review the summary against the user's chosen scope; stop and ask if it differs. Only then click "Create Token". The token is shown once — click Copy and call capture_secret with source="clipboard" (or capture the element). Do NOT use the "Global API Key".
 - account_id: open https://dash.cloudflare.com/ → pick the account (first one if a single account) → on the account home / Workers & Pages overview the right sidebar shows "Account ID" (32 hex chars) with a copy button; capture it with key_type "account_id" (it is not secret). If hard to find, the account id is also the first path segment in URLs like https://dash.cloudflare.com/<account_id>/... — capture from the address bar via read_page of the URL is not possible, so use the sidebar field.
 """
 

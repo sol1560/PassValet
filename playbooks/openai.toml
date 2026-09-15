@@ -9,8 +9,8 @@ max_steps = 35
 instructions = """
 OpenAI platform:
 - API keys page: https://platform.openai.com/api-keys (or Settings → API keys, or per-project: /settings/organization/api-keys). Existing keys cannot be revealed again.
-- Create a new key: click "Create new secret key", name it "passvalet", keep default project/permissions ("All"), click "Create secret key". The dialog shows the key once (starts with sk-proj- or sk-). Click its Copy button and call capture_secret with source="clipboard" (or capture_secret on the element showing the key) BEFORE clicking Done.
-- If an organization/project chooser appears and hints do not say which, pick the default one.
+- Before creating a key, identify the intended organization, project and permissions from the user's instructions. If any are unspecified, call need_user and ask the user to choose them in the form. Do not select the default project or "All" permissions on the user's behalf.
+- Create a new key only after the chosen project and permissions are clear: click "Create new secret key", name it "passvalet", apply only the user's chosen scope, and click "Create secret key". The dialog shows the key once (starts with sk-proj- or sk-). Click its Copy button and call capture_secret with source="clipboard" (or capture_secret on the element showing the key) BEFORE clicking Done.
 """
 
 [rotate]
