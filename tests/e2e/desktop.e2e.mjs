@@ -174,4 +174,30 @@ describe('真实桌面与MCP', () => {
     await browser.waitUntil(async () => (await $('.fp').getText()).includes(secret));
     await $('button=隐藏').click();
   });
+
+  it('denied-request-does-not-grant-a-session', async () => {
+    const client = new McpClient();
+    try {
+      await client.init();
+      const pending = client.call('request_permissions', {
+        purpose: '测试拒绝后不可读取',
+        requests: [{ service: 'e2e', key_type: 'api_key', access: 'read' }],
+      });
+      pending.catch(() => {});
+      await browser.waitUntil(async () => (await browser.getWindowHandles()).length > 1);
+      const prompt = (await browser.getWindowHandles()).find((handle) => handle !== mainWindow);
+      await browser.switchToWindow(prompt);
+      await $('button=拒绝').waitForDisplayed();
+      await $('button=拒绝').click();
+      const denied = await pending;
+      assert.equal(denied.isError, true);
+      assert.equal(body(denied).code, 'user_denied');
+      const read = await client.call('get_key', { service: 'e2e', key_type: 'api_key' });
+      assert.equal(read.isError, true);
+      assert.equal(body(read).code, 'no_session');
+    } finally {
+      await browser.switchToWindow(mainWindow);
+      client.close();
+    }
+  });
 });
