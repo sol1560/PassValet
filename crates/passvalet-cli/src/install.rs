@@ -72,8 +72,14 @@ pub fn print_mcp_config() {
     );
     println!();
     println!("# Claude Code");
-    println!("claude mcp add passvalet -- {exe} mcp");
+    println!(
+        "claude mcp add --scope user passvalet -- '{}' mcp",
+        exe.replace('\'', "'\\''")
+    );
     println!();
     println!("# Codex (~/.codex/config.toml)");
-    println!("[mcp_servers.passvalet]\ncommand = \"{exe}\"\nargs = [\"mcp\"]");
+    println!(
+        "[mcp_servers.passvalet]\ncommand = {}\nargs = [\"mcp\"]",
+        serde_json::to_string(&exe).unwrap()
+    );
 }

@@ -50,6 +50,8 @@ test('采集拒绝其他网站和非网页地址，包括跳转后的页面', as
   let redirect = false;
   let clipboardHook;
   let systemClipboardReads = 0;
+  let onDetach;
+  let attaches = 0;
   globalThis.chrome = {
     tabs: {
       onRemoved: { addListener() {} },
@@ -62,9 +64,9 @@ test('采集拒绝其他网站和非网页地址，包括跳转后的页面', as
     tabGroups: { async update() {} },
     debugger: {
       onEvent: { addListener() {} },
-      onDetach: { addListener() {} },
-      async attach() {},
-      async detach() {},
+      onDetach: { addListener(listener) { onDetach = listener; } },
+      async attach() { attaches++; },
+      async detach(source) { onDetach(source, 'canceled_by_user'); },
       sendCommand(_source, method, params, callback) {
         commands.push(method);
         if (method === 'Page.addScriptToEvaluateOnNewDocument') clipboardHook = params.source;
@@ -109,6 +111,19 @@ test('采集拒绝其他网站和非网页地址，包括跳转后的页面', as
     await assert.rejects(executor.call('navigate', { run_id: 'run', url: `${origin}/redirect` }), wrongOrigin);
     tab.url = `${origin}/keys`;
     await assert.rejects(executor.call('left_click', { run_id: 'run', coordinate: [10, 10] }), wrongOrigin);
+    redirect = false;
+    tab.url = `${origin}/keys`;
+    const events = [];
+    executor.onEvent = (event) => events.push(event);
+    const attachedBeforeCancel = attaches;
+    onDetach({ tabId: 1 }, 'canceled_by_user');
+    await assert.rejects(executor.call('get_page_text', { run_id: 'run' }), (error) => error.data?.code === 'aborted');
+    assert.equal(attaches, attachedBeforeCancel, '用户取消调试后不能自动重新接管浏览器');
+    assert.ok(events.some((event) => event.kind === 'user_aborted' && event.run_id === 'run'));
+    await executor.sessionBegin('normal-cleanup', `${origin}/keys`);
+    events.length = 0;
+    await executor.sessionEnd('normal-cleanup', false);
+    assert.equal(events.some((event) => event.kind === 'user_aborted'), false, '正常清理不能被误报为用户中止');
   } finally {
     await executor.sessionEnd('run', false);
     delete globalThis.chrome;

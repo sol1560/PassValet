@@ -47,6 +47,8 @@ jobs:
           cargo build --locked -p passvalet-cli
           mkdir -p apps/desktop/src-tauri/binaries
           cp target/debug/passvalet "apps/desktop/src-tauri/binaries/passvalet-$(rustc -vV | sed -n 's/^host: //p')"
+      - name: Verify copied configuration with special installation paths
+        run: PASSVALET_TEST_CLI=target/debug/passvalet PASSVALET_TEST_CODEX_BIN="$RUNNER_TEMP/editor-install-test/node_modules/.bin" node --test --test-name-pattern '生成的配置' tests/install-script.test.mjs
       - name: Rust tests
         run: cargo test --workspace --locked
       - name: Rust formatting and strict checks

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -82,6 +82,33 @@ test('Claude注册失败时安装不能返回成功', { skip: !!process.env.PASS
   installTest(({ run, bin }) => {
     writeFileSync(path.join(bin, 'claude'), '#!/bin/sh\nexit 42\n');
     assert.notEqual(run().status, 0);
+  });
+});
+
+test('生成的配置保留安装路径中的空格及单双引号', {
+  skip: !process.env.PASSVALET_TEST_CLI || !process.env.PASSVALET_TEST_CODEX_BIN,
+}, () => {
+  installTest(({ home, bin }) => {
+    const cli = path.join(home, `passvalet "double" 'single'`);
+    copyFileSync(process.env.PASSVALET_TEST_CLI, cli);
+    chmodSync(cli, 0o700);
+    const output = spawnSync(cli, ['mcp-config'], { encoding: 'utf8', env: { ...process.env, HOME: home } });
+    assert.equal(output.status, 0, output.stderr);
+    const command = output.stdout.split('\n').find((line) => line.startsWith('claude mcp'));
+    writeFileSync(path.join(bin, 'claude'), '#!/usr/bin/env node\nprocess.stdout.write(JSON.stringify(process.argv.slice(2)));\n');
+    const shell = spawnSync('bash', ['-c', command], {
+      encoding: 'utf8', env: { ...process.env, HOME: home, PATH: `${bin}:${process.env.PATH}` },
+    });
+    assert.equal(shell.status, 0, shell.stderr);
+    assert.deepEqual(JSON.parse(shell.stdout), ['mcp', 'add', '--scope', 'user', 'passvalet', '--', cli, 'mcp']);
+    const codexHome = path.join(home, '.codex');
+    mkdirSync(codexHome);
+    writeFileSync(path.join(codexHome, 'config.toml'), output.stdout.slice(output.stdout.indexOf('[mcp_servers.passvalet]')));
+    const result = spawnSync(path.join(process.env.PASSVALET_TEST_CODEX_BIN, 'codex'), ['mcp', 'get', 'passvalet', '--json'], {
+      encoding: 'utf8', env: { ...process.env, HOME: home, CODEX_HOME: codexHome },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).transport.command, cli);
   });
 });
 
