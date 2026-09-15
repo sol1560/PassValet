@@ -31,6 +31,7 @@ export default function App() {
 function Shell() {
   const toast = useToast();
   const [info, setInfo] = useState<VaultInfo | null>(null);
+  const [setupPending, setSetupPending] = useState<boolean | null>(null);
   const [page, setPage] = useState<Page>("keys");
   const [prompts, setPrompts] = useState<PendingPrompt[]>([]);
   const [ext, setExt] = useState(false);
@@ -38,7 +39,10 @@ function Shell() {
 
   const refresh = useCallback(async () => {
     try {
-      setInfo(await api.vaultInfo());
+      const next = await api.vaultInfo();
+      setInfo(next);
+      // 创建成功的事件不能跳过恢复密钥的保存确认。
+      setSetupPending((pending) => pending ?? !next.initialized);
       setPrompts(await api.promptList());
       setExt((await api.extensionStatus()).connected);
       setActiveRun((await api.listRuns()).some((r) => !r.finished));
@@ -65,11 +69,11 @@ function Shell() {
 
   if (!info) return <div className="center muted">加载中…</div>;
 
-  if (!info.initialized) {
+  if (!info.initialized || setupPending) {
     return (
       <>
         <div className="titlebar-drag" />
-        <Setup onDone={refresh} />
+        <Setup onDone={() => { setSetupPending(false); void refresh(); }} />
       </>
     );
   }

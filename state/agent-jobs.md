@@ -2,7 +2,7 @@
 
 | id | kind | target | status | notes |
 | --- | --- | --- | --- | --- |
-| 34938681897 | GitHub Actions | M2 | blocked | 计费拒绝启动，未执行步骤 |
+| 34938681897 | GitHub Actions | M2 | running | 第二次运行，仓库公开后已启动macOS；本地watch进程22095 |
 | 8283 | test | baseline | done | 原有20项通过，3项ignored |
 | 13062 | test | IPC回归 | done | 修复前4项失败，原有1项通过 |
 | 14838 | test | IPC回归 | done | 修复后含边界检查6项通过 |
