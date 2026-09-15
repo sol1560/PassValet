@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { browser, $ } from '@wdio/globals';
 import { McpClient, body } from './mcp-client.mjs';
+import { openExtension } from './chrome-extension.mjs';
 
 const secret = 'passvalet-e2e-only-not-a-real-api-key';
 let mcp;
@@ -31,7 +32,8 @@ describe('真实桌面与MCP', () => {
     await $('input[placeholder="api_key"]').setValue('api_key');
     await $('textarea').setValue(secret);
     await $('button=保存').click();
-    await $('.service-head .name=e2e').waitForDisplayed();
+    await $('.service-head .name').waitForDisplayed();
+    assert.equal(await $('.service-head .name').getText(), 'e2e');
     mcp = new McpClient();
     await mcp.init();
     const result = await mcp.call('get_key', { service: 'e2e', key_type: 'api_key' });
@@ -84,5 +86,16 @@ describe('真实桌面与MCP', () => {
     assert.equal(revoked.isError, true);
     assert.equal(body(revoked).code, 'session_revoked');
     await browser.saveScreenshot('test-results/session-revoked.png');
+  });
+
+  it('real-chrome-native-host-connects-and-disconnects', async function () {
+    this.timeout(240_000);
+    const chrome = await openExtension();
+    try {
+      await $('span=扩展已连接').waitForDisplayed();
+    } finally {
+      await chrome.deleteSession();
+    }
+    await $('span=扩展未连接').waitForDisplayed();
   });
 });

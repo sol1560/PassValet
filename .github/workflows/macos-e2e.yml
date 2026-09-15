@@ -29,6 +29,8 @@ jobs:
       - name: Rust toolchain
         run: rustup show active-toolchain
       - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm --filter @passvalet/desktop build
