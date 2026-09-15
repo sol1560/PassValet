@@ -2,7 +2,7 @@
 name = "passvalet-desktop"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+license-file.workspace = true
 description = "PassValet desktop app"
 
 [lib]

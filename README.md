@@ -1,5 +1,11 @@
 # PassValet
 
+**源码可见，使用需购买商业授权。本项目不是 OSI 认可的开源项目。**
+
+你可以阅读、下载源码用于查看与静态检查；编译、运行、测试、自用、自建服务、公司内部使用、修改或再分发，均须先取得另行购买的书面商业许可。没有个人、非商业或试用免费的默认授权。详见 [LICENSE](LICENSE)。购买授权请联系[仓库所有者](https://github.com/sol1560)，不要在公开 issue 中提交密钥或付款资料。
+
+第三方组件保留原许可证，尤其是 `crates/tauri-plugin-macos-passkey` 的 MIT/Apache-2.0 许可；新条款不追溯取消以前已有效授予的权利，也不限制 GitHub 服务条款允许的查看和 fork。
+
 给 vibe coder 和 AI coding agent 用的密钥管家：在你自己的浏览器里自动从 SaaS 控制台抓取 API key，加密存在本机，
 按 session 分发给 agent（MCP / CLI），一次 Touch ID / passkey 授权，key 失效时自动回控制台轮换。
 

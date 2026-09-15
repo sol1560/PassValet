@@ -2,7 +2,7 @@
 name = "passvalet-cli"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+license-file.workspace = true
 description = "PassValet CLI, MCP server and Chrome native-messaging host"
 
 [[bin]]

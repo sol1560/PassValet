@@ -2,7 +2,7 @@
 name = "passvalet-core"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+license-file.workspace = true
 description = "PassValet vault: encrypted local secret storage, sessions, policy and audit"
 
 [features]
