@@ -50,7 +50,10 @@ if command -v claude >/dev/null 2>&1; then
 fi
 
 # Codex
-if [[ -f ~/.codex/config.toml ]] && ! grep -q "mcp_servers.passvalet" ~/.codex/config.toml; then
-  printf '\n[mcp_servers.passvalet]\ncommand = "%s"\nargs = ["mcp"]\n' "$CLI" >> ~/.codex/config.toml
-  echo "codex: appended to ~/.codex/config.toml"
+if command -v codex >/dev/null 2>&1; then
+  mkdir -p "${CODEX_HOME:-$HOME/.codex}"
+  codex mcp add passvalet -- "$CLI" mcp
+  echo "codex: registered"
+else
+  echo "codex: 未找到命令，未修改配置；安装 Codex CLI 后重新运行，或从 PassValet 设置页复制配置。"
 fi
