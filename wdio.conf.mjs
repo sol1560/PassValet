@@ -40,9 +40,6 @@ export const config = {
     await access(binary);
     await mkdir(artifacts, { recursive: true });
   },
-  // 只记录命令名和时间，不记录参数、返回值或输入的密钥。
-  beforeCommand: (name) => console.info(`[driver] ${Date.now()} ${name} start`),
-  afterCommand: (name) => console.info(`[driver] ${Date.now()} ${name} end`),
   afterTest: async (test, _context, result) => {
     if (!result.passed) {
       // 只使用假密钥。遮住恢复码与密钥输入框，避免把测试习惯带入真实数据测试。
