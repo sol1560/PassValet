@@ -53,7 +53,9 @@ impl Playbook {
     pub fn supports_rotation(&self, key_type: &str) -> bool {
         self.rotate
             .as_ref()
-            .map(|r| r.supported && (r.key_types.is_empty() || r.key_types.iter().any(|k| k == key_type)))
+            .map(|r| {
+                r.supported && (r.key_types.is_empty() || r.key_types.iter().any(|k| k == key_type))
+            })
             .unwrap_or(false)
     }
 }
@@ -69,9 +71,15 @@ const BUILTIN: &[(&str, &str)] = &[
     ("stripe", include_str!("../../../playbooks/stripe.toml")),
     ("openai", include_str!("../../../playbooks/openai.toml")),
     ("vercel", include_str!("../../../playbooks/vercel.toml")),
-    ("cloudflare", include_str!("../../../playbooks/cloudflare.toml")),
+    (
+        "cloudflare",
+        include_str!("../../../playbooks/cloudflare.toml"),
+    ),
     ("github", include_str!("../../../playbooks/github.toml")),
-    ("anthropic", include_str!("../../../playbooks/anthropic.toml")),
+    (
+        "anthropic",
+        include_str!("../../../playbooks/anthropic.toml"),
+    ),
 ];
 
 impl PlaybookSet {

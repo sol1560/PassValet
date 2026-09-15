@@ -31,7 +31,11 @@ async fn response_error(kind: ProviderKind, status: u16, body: String) -> String
             "HTTP/1.1 {status} Test\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
             body.len()
         );
-        stream.get_mut().write_all(response.as_bytes()).await.unwrap();
+        stream
+            .get_mut()
+            .write_all(response.as_bytes())
+            .await
+            .unwrap();
     };
     let request = CompletionRequest {
         model: "test".into(),
@@ -62,7 +66,10 @@ async fn server_error_does_not_echo_credentials() {
     for kind in [ProviderKind::OpenaiCompat, ProviderKind::Anthropic] {
         for status in [200, 401] {
             let error = response_error(kind, status, format!("invalid token {key}")).await;
-            assert!(!error.contains(&key), "provider errors must not echo credentials");
+            assert!(
+                !error.contains(&key),
+                "provider errors must not echo credentials"
+            );
         }
     }
 }

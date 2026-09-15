@@ -63,7 +63,11 @@ impl PromptQueue {
     }
 
     pub fn get(&self, id: &str) -> Option<PendingPrompt> {
-        self.entries.lock().unwrap().get(id).map(|e| e.prompt.clone())
+        self.entries
+            .lock()
+            .unwrap()
+            .get(id)
+            .map(|e| e.prompt.clone())
     }
 
     /// Enqueue and return a receiver that resolves with the user's decision.

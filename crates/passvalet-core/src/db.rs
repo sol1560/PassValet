@@ -160,11 +160,7 @@ pub fn insert_meta(conn: &Connection, m: &MetaRow) -> CoreResult<()> {
     Ok(())
 }
 
-pub fn update_meta_keys(
-    conn: &Connection,
-    meta: &MetaRow,
-    now: &str,
-) -> CoreResult<()> {
+pub fn update_meta_keys(conn: &Connection, meta: &MetaRow, now: &str) -> CoreResult<()> {
     conn.execute(
         "UPDATE vault_meta SET provider = ?1, kek_salt = ?2, verifier = ?3, recovery_salt = ?4, recovery_wrapped_kek = ?5, credential_id = ?6, user_handle = ?7, updated_at = ?8 WHERE id = 1",
         params![meta.provider, meta.kek_salt, meta.verifier, meta.recovery_salt, meta.recovery_wrapped_kek, meta.credential_id, meta.user_handle, now],

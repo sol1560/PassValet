@@ -62,7 +62,9 @@ impl IpcClient {
             Err(e) => return Err(e),
         }
         if !launch() {
-            return Err(IpcError::NotRunning(Self::socket_path().display().to_string()));
+            return Err(IpcError::NotRunning(
+                Self::socket_path().display().to_string(),
+            ));
         }
         for _ in 0..40 {
             tokio::time::sleep(Duration::from_millis(250)).await;
@@ -70,7 +72,9 @@ impl IpcClient {
                 return Ok(c);
             }
         }
-        Err(IpcError::NotRunning(Self::socket_path().display().to_string()))
+        Err(IpcError::NotRunning(
+            Self::socket_path().display().to_string(),
+        ))
     }
 
     pub fn take_inbound(&mut self) -> Option<mpsc::Receiver<Inbound>> {
@@ -131,7 +135,8 @@ impl IpcClient {
     }
 
     pub async fn list_services(&self) -> Result<ListServicesResult, IpcError> {
-        self.call(methods::LIST_SERVICES, &serde_json::json!({})).await
+        self.call(methods::LIST_SERVICES, &serde_json::json!({}))
+            .await
     }
 
     pub async fn list_keys(&self) -> Result<ListKeysResult, IpcError> {

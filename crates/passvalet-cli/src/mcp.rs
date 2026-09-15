@@ -301,7 +301,9 @@ impl PassValetMcp {
             Err(r) => return Ok(r),
         };
         match client.list_services().await {
-            Ok(r) => Ok(CallToolResult::structured(serde_json::to_value(r).unwrap_or_default())),
+            Ok(r) => Ok(CallToolResult::structured(
+                serde_json::to_value(r).unwrap_or_default(),
+            )),
             Err(e) => Ok(ipc_err(e, "")),
         }
     }
@@ -313,7 +315,9 @@ impl PassValetMcp {
     async fn vault_status(&self) -> Result<CallToolResult, ErrorData> {
         match IpcClient::connect().await {
             Ok(c) => match c.status().await {
-                Ok(s) => Ok(CallToolResult::structured(serde_json::to_value(s).unwrap_or_default())),
+                Ok(s) => Ok(CallToolResult::structured(
+                    serde_json::to_value(s).unwrap_or_default(),
+                )),
                 Err(e) => Ok(ipc_err(e, "")),
             },
             Err(IpcError::NotRunning(p)) => Ok(CallToolResult::structured(serde_json::json!({
@@ -356,10 +360,7 @@ impl ServerHandler for PassValetMcp {
         &self,
         context: NotificationContext<RoleServer>,
     ) -> impl std::future::Future<Output = ()> + rmcp::service::MaybeSendFuture + '_ {
-        let name = context
-            .peer
-            .peer_info()
-            .map(|i| i.client_info.name.clone());
+        let name = context.peer.peer_info().map(|i| i.client_info.name.clone());
         let state = self.state.clone();
         async move {
             if let Some(n) = name {

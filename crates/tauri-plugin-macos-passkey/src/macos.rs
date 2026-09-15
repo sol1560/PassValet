@@ -117,7 +117,9 @@ pub async fn register<R: tauri::Runtime>(
             ptr_callback,
         );
     }
-    let ptr = rx.await.map_err(|_| PasskeyError::Failed("bridge dropped".into()))? as *mut c_void;
+    let ptr = rx
+        .await
+        .map_err(|_| PasskeyError::Failed("bridge dropped".into()))? as *mut c_void;
     if ptr.is_null() {
         return Err(classify(last_error()));
     }
@@ -150,7 +152,9 @@ pub async fn login<R: tauri::Runtime>(
             ptr_callback,
         );
     }
-    let ptr = rx.await.map_err(|_| PasskeyError::Failed("bridge dropped".into()))? as *mut c_void;
+    let ptr = rx
+        .await
+        .map_err(|_| PasskeyError::Failed("bridge dropped".into()))? as *mut c_void;
     if ptr.is_null() {
         return Err(classify(last_error()));
     }
@@ -172,7 +176,9 @@ pub async fn touch_id(reason: &str, allow_password: bool) -> Result<bool, Passke
     unsafe {
         evaluate_local_auth(SRString::from(reason), allow_password, ctx, bool_callback);
     }
-    let ok = rx.await.map_err(|_| PasskeyError::Failed("bridge dropped".into()))?;
+    let ok = rx
+        .await
+        .map_err(|_| PasskeyError::Failed("bridge dropped".into()))?;
     if ok {
         Ok(true)
     } else {

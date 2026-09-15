@@ -55,7 +55,10 @@ pub async fn vault_setup<R: Runtime>(
 }
 
 #[tauri::command]
-pub async fn vault_unlock<R: Runtime>(app: AppHandle<R>, state: State<'_, Arc<AppState>>) -> Res<()> {
+pub async fn vault_unlock<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, Arc<AppState>>,
+) -> Res<()> {
     let settings = state.settings();
     unlock::unlock(&app, &state.vault, &settings, "解锁 PassValet 保险库")
         .await
@@ -103,7 +106,9 @@ pub async fn vault_rebind<R: Runtime>(
 
 #[tauri::command]
 pub async fn vault_regenerate_recovery(state: State<'_, Arc<AppState>>) -> Res<SetupResult> {
-    unlock::verify_presence("重新生成恢复密钥").await.map_err(err)?;
+    unlock::verify_presence("重新生成恢复密钥")
+        .await
+        .map_err(err)?;
     let text = state.with_vault(|v| v.regenerate_recovery()).map_err(err)?;
     Ok(SetupResult { recovery_key: text })
 }
@@ -156,7 +161,11 @@ pub fn add_secret<R: Runtime>(
 }
 
 #[tauri::command]
-pub fn delete_secret<R: Runtime>(app: AppHandle<R>, state: State<'_, Arc<AppState>>, id: String) -> Res<()> {
+pub fn delete_secret<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Res<()> {
     state.with_vault(|v| v.delete_secret(&id)).map_err(err)?;
     let _ = app.emit("vault:changed", ());
     Ok(())
@@ -170,7 +179,11 @@ pub fn update_secret_label(state: State<'_, Arc<AppState>>, id: String, label: S
 }
 
 #[tauri::command]
-pub async fn reveal_secret(state: State<'_, Arc<AppState>>, service: String, key_type: String) -> Res<String> {
+pub async fn reveal_secret(
+    state: State<'_, Arc<AppState>>,
+    service: String,
+    key_type: String,
+) -> Res<String> {
     if state.settings().presence_on_approve {
         unlock::verify_presence(&format!("显示 {} 的 {}", service, key_type))
             .await
@@ -191,28 +204,42 @@ pub fn list_services(state: State<'_, Arc<AppState>>) -> Res<Vec<ServiceInfo>> {
 // ------------------------------------------------------------------ sessions & audit
 
 #[tauri::command]
-pub fn list_sessions(state: State<'_, Arc<AppState>>, include_inactive: Option<bool>) -> Res<Vec<Session>> {
+pub fn list_sessions(
+    state: State<'_, Arc<AppState>>,
+    include_inactive: Option<bool>,
+) -> Res<Vec<Session>> {
     state
         .with_vault(|v| v.list_sessions(include_inactive.unwrap_or(false)))
         .map_err(err)
 }
 
 #[tauri::command]
-pub fn revoke_session<R: Runtime>(app: AppHandle<R>, state: State<'_, Arc<AppState>>, id: String) -> Res<()> {
+pub fn revoke_session<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, Arc<AppState>>,
+    id: String,
+) -> Res<()> {
     state.with_vault(|v| v.revoke_session(&id)).map_err(err)?;
     let _ = app.emit("vault:changed", ());
     Ok(())
 }
 
 #[tauri::command]
-pub fn revoke_all_sessions<R: Runtime>(app: AppHandle<R>, state: State<'_, Arc<AppState>>) -> Res<usize> {
+pub fn revoke_all_sessions<R: Runtime>(
+    app: AppHandle<R>,
+    state: State<'_, Arc<AppState>>,
+) -> Res<usize> {
     let n = state.with_vault(|v| v.revoke_all_sessions()).map_err(err)?;
     let _ = app.emit("vault:changed", ());
     Ok(n)
 }
 
 #[tauri::command]
-pub fn audit_log(state: State<'_, Arc<AppState>>, limit: Option<i64>, offset: Option<i64>) -> Res<Vec<AuditEntry>> {
+pub fn audit_log(
+    state: State<'_, Arc<AppState>>,
+    limit: Option<i64>,
+    offset: Option<i64>,
+) -> Res<Vec<AuditEntry>> {
     state
         .with_vault(|v| v.audit_log(limit.unwrap_or(200).clamp(1, 2000), offset.unwrap_or(0)))
         .map_err(err)
@@ -261,10 +288,7 @@ pub struct SettingsPatch {
 pub fn settings_set(state: State<'_, Arc<AppState>>, patch: SettingsPatch) -> Res<()> {
     let mut s = state.settings.write().unwrap();
     if let Some(p) = patch.provider {
-        s.provider = ProviderConfig {
-            api_key: None,
-            ..p
-        };
+        s.provider = ProviderConfig { api_key: None, ..p };
     }
     if let Some(m) = patch.auto_lock_minutes {
         s.auto_lock_minutes = m;
@@ -374,9 +398,14 @@ pub async fn prompt_decide<R: Runtime>(
     let settings = state.settings();
     let locked = state.with_vault(|v| v.is_locked());
     if locked {
-        unlock::unlock(&app, &state.vault, &settings, &format!("授权 {}", p.summary.agent_label))
-            .await
-            .map_err(err)?;
+        unlock::unlock(
+            &app,
+            &state.vault,
+            &settings,
+            &format!("授权 {}", p.summary.agent_label),
+        )
+        .await
+        .map_err(err)?;
     } else if settings.presence_on_approve {
         unlock::verify_presence(&format!("授权 {}", p.summary.agent_label))
             .await
@@ -522,7 +551,10 @@ pub fn cli_path() -> std::path::PathBuf {
 }
 
 #[tauri::command]
-pub fn install_extension_host(state: State<'_, Arc<AppState>>, extension_id: String) -> Res<String> {
+pub fn install_extension_host(
+    state: State<'_, Arc<AppState>>,
+    extension_id: String,
+) -> Res<String> {
     let id = extension_id.trim().to_string();
     if id.len() != 32 || !id.chars().all(|c| c.is_ascii_lowercase()) {
         return Err("扩展 ID 应为 32 个小写字母（见 chrome://extensions）".into());

@@ -47,7 +47,10 @@ pub fn install_host(extension_ids: Vec<String>) -> Result<()> {
         written += 1;
     }
     if written == 0 {
-        bail!("no Chromium-based browser profile found under {}", base.display());
+        bail!(
+            "no Chromium-based browser profile found under {}",
+            base.display()
+        );
     }
     // Wrapper script is unnecessary: Chrome executes `path` directly with no args, so the
     // binary detects native-messaging mode by the parent origin argument.

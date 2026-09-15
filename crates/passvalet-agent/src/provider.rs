@@ -17,7 +17,10 @@ pub enum Role {
 pub enum ContentPart {
     Text(String),
     /// PNG/JPEG, base64.
-    Image { media_type: String, data: String },
+    Image {
+        media_type: String,
+        data: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

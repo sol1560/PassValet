@@ -6,7 +6,9 @@ use std::sync::{Arc, Mutex};
 use async_trait::async_trait;
 use passvalet_agent::playbook::PlaybookSet;
 use passvalet_agent::provider::ProviderConfig;
-use passvalet_agent::run::{RunControl, RunEvent, RunKind, RunOutcome, RunRequest, Runner, SecretSink};
+use passvalet_agent::run::{
+    RunControl, RunEvent, RunKind, RunOutcome, RunRequest, Runner, SecretSink,
+};
 use passvalet_agent::{providers, ModelLadder};
 use passvalet_core::model::{AuditEvent, NewSecret, SecretSource};
 use passvalet_core::{services, Vault};
@@ -47,14 +49,24 @@ impl RunRegistry {
     }
 
     pub fn list(&self) -> Vec<RunInfo> {
-        let mut v: Vec<RunInfo> = self.runs.lock().unwrap().values().map(|e| e.info.clone()).collect();
+        let mut v: Vec<RunInfo> = self
+            .runs
+            .lock()
+            .unwrap()
+            .values()
+            .map(|e| e.info.clone())
+            .collect();
         v.sort_by(|a, b| b.started_at.cmp(&a.started_at));
         v
     }
 
     #[allow(dead_code)]
     pub fn get(&self, run_id: &str) -> Option<RunInfo> {
-        self.runs.lock().unwrap().get(run_id).map(|e| e.info.clone())
+        self.runs
+            .lock()
+            .unwrap()
+            .get(run_id)
+            .map(|e| e.info.clone())
     }
 
     pub fn active(&self) -> Option<RunInfo> {
@@ -125,7 +137,10 @@ impl RunRegistry {
     }
 
     pub fn clear_finished(&self) {
-        self.runs.lock().unwrap().retain(|_, e| e.info.finished.is_none());
+        self.runs
+            .lock()
+            .unwrap()
+            .retain(|_, e| e.info.finished.is_none());
     }
 }
 
@@ -150,7 +165,10 @@ impl SecretSink for VaultSink {
             return Ok(false);
         }
         let mut metadata = serde_json::Map::new();
-        metadata.insert("run_id".into(), serde_json::Value::String(run_id.to_string()));
+        metadata.insert(
+            "run_id".into(),
+            serde_json::Value::String(run_id.to_string()),
+        );
         let mut v = self.vault.lock().unwrap();
         v.put_secret(NewSecret {
             service: service.to_string(),
@@ -193,7 +211,10 @@ pub fn start<R: Runtime>(
     if registry.active().is_some() {
         return Err("已有一个采集任务在运行，请先等待其完成或中止".into());
     }
-    if args.provider.api_key.is_none() && !args.provider.base_url.contains("127.0.0.1") && !args.provider.base_url.contains("localhost") {
+    if args.provider.api_key.is_none()
+        && !args.provider.base_url.contains("127.0.0.1")
+        && !args.provider.base_url.contains("localhost")
+    {
         return Err("请先在设置中填写模型 API key（ZenMux）".into());
     }
 
@@ -208,7 +229,14 @@ pub fn start<R: Runtime>(
             RunKind::Collect { .. } => AuditEvent::CollectionStarted,
             RunKind::Rotate { .. } => AuditEvent::RotationStarted,
         };
-        let _ = v.audit(ev, Some("passvalet-agent"), Some(&args.service), None, None, Some(&run_id));
+        let _ = v.audit(
+            ev,
+            Some("passvalet-agent"),
+            Some(&args.service),
+            None,
+            None,
+            Some(&run_id),
+        );
     }
 
     let control = RunControl::default();
@@ -267,14 +295,31 @@ pub fn start<R: Runtime>(
             if let RunEvent::Finished { outcome, .. } = &ev {
                 let v = vault2.lock().unwrap();
                 let (event, detail) = match (&kind2, outcome) {
-                    (RunKind::Collect { .. }, RunOutcome::Success { .. }) => (AuditEvent::CollectionCompleted, "success"),
-                    (RunKind::Collect { .. }, RunOutcome::Partial { .. }) => (AuditEvent::CollectionCompleted, "partial"),
-                    (RunKind::Collect { .. }, RunOutcome::Aborted) => (AuditEvent::CollectionAborted, "aborted"),
-                    (RunKind::Collect { .. }, RunOutcome::Failed { .. }) => (AuditEvent::CollectionAborted, "failed"),
-                    (RunKind::Rotate { .. }, RunOutcome::Success { .. }) => (AuditEvent::RotationCompleted, "success"),
+                    (RunKind::Collect { .. }, RunOutcome::Success { .. }) => {
+                        (AuditEvent::CollectionCompleted, "success")
+                    }
+                    (RunKind::Collect { .. }, RunOutcome::Partial { .. }) => {
+                        (AuditEvent::CollectionCompleted, "partial")
+                    }
+                    (RunKind::Collect { .. }, RunOutcome::Aborted) => {
+                        (AuditEvent::CollectionAborted, "aborted")
+                    }
+                    (RunKind::Collect { .. }, RunOutcome::Failed { .. }) => {
+                        (AuditEvent::CollectionAborted, "failed")
+                    }
+                    (RunKind::Rotate { .. }, RunOutcome::Success { .. }) => {
+                        (AuditEvent::RotationCompleted, "success")
+                    }
                     (RunKind::Rotate { .. }, _) => (AuditEvent::RotationFailed, "failed"),
                 };
-                let _ = v.audit(event, Some("passvalet-agent"), Some(&service2), None, None, Some(detail));
+                let _ = v.audit(
+                    event,
+                    Some("passvalet-agent"),
+                    Some(&service2),
+                    None,
+                    None,
+                    Some(detail),
+                );
             }
             let _ = app2.emit("run:event", &ev);
         }
@@ -294,21 +339,37 @@ mod tests {
     #[tokio::test]
     async fn invalid_capture_preserves_existing_secret() {
         let mut vault = Vault::open_in_memory().unwrap();
-        vault.initialize(InitParams {
-            provider: UnlockProviderKind::TouchIdKeychain,
-            kek: SymKey::random(),
-            kek_salt: Vault::new_salt(),
-            credential_id: None,
-            user_handle: None,
-            with_recovery: false,
-        }).unwrap();
+        vault
+            .initialize(InitParams {
+                provider: UnlockProviderKind::TouchIdKeychain,
+                kek: SymKey::random(),
+                kek_salt: Vault::new_salt(),
+                credential_id: None,
+                user_handle: None,
+                with_recovery: false,
+            })
+            .unwrap();
         let sink = VaultSink {
             vault: Arc::new(Mutex::new(vault)),
             source: SecretSource::Collected,
         };
         let original = "https://original-project.supabase.co";
-        assert!(sink.store("test", "supabase", "url", original, None).await.unwrap());
-        assert!(!sink.store("test", "supabase", "url", "Copy URL", None).await.unwrap());
-        assert_eq!(sink.vault.lock().unwrap().read_secret_value("supabase", "url").unwrap().as_str(), original);
+        assert!(sink
+            .store("test", "supabase", "url", original, None)
+            .await
+            .unwrap());
+        assert!(!sink
+            .store("test", "supabase", "url", "Copy URL", None)
+            .await
+            .unwrap());
+        assert_eq!(
+            sink.vault
+                .lock()
+                .unwrap()
+                .read_secret_value("supabase", "url")
+                .unwrap()
+                .as_str(),
+            original
+        );
     }
 }

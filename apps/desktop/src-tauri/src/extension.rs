@@ -17,7 +17,11 @@ pub struct ExtensionBridge {
 
 impl ExtensionBridge {
     pub fn attach(&self, peer: Peer, hello: ExtHelloParams) {
-        tracing::info!("extension connected: {} {}", hello.browser, hello.extension_version);
+        tracing::info!(
+            "extension connected: {} {}",
+            hello.browser,
+            hello.extension_version
+        );
         *self.peer.lock().unwrap() = Some((peer, hello));
     }
 
@@ -43,7 +47,9 @@ impl ExtensionBridge {
     }
 
     pub fn is_peer(&self, peer_id: u64) -> bool {
-        self.peer().map(|peer| peer.id() == peer_id).unwrap_or(false)
+        self.peer()
+            .map(|peer| peer.id() == peer_id)
+            .unwrap_or(false)
     }
 
     fn peer(&self) -> Result<Peer, ExecutorError> {
@@ -56,15 +62,22 @@ impl ExtensionBridge {
             .ok_or(ExecutorError::NotConnected)
     }
 
-    async fn call_raw(&self, method: &str, params: Value, timeout: Duration) -> Result<Value, ExecutorError> {
+    async fn call_raw(
+        &self,
+        method: &str,
+        params: Value,
+        timeout: Duration,
+    ) -> Result<Value, ExecutorError> {
         let peer = self.peer()?;
-        peer.call_value(method, params, timeout).await.map_err(|e| match e {
-            IpcError::Closed => ExecutorError::NotConnected,
-            IpcError::Rpc(r) if r.app_code() == Some("aborted") => ExecutorError::Aborted,
-            IpcError::Rpc(r) => ExecutorError::Failed(r.message),
-            IpcError::Timeout(m) => ExecutorError::Failed(format!("timeout waiting for {m}")),
-            other => ExecutorError::Failed(other.to_string()),
-        })
+        peer.call_value(method, params, timeout)
+            .await
+            .map_err(|e| match e {
+                IpcError::Closed => ExecutorError::NotConnected,
+                IpcError::Rpc(r) if r.app_code() == Some("aborted") => ExecutorError::Aborted,
+                IpcError::Rpc(r) => ExecutorError::Failed(r.message),
+                IpcError::Timeout(m) => ExecutorError::Failed(format!("timeout waiting for {m}")),
+                other => ExecutorError::Failed(other.to_string()),
+            })
     }
 
     #[allow(dead_code)]
@@ -91,7 +104,12 @@ impl BrowserExecutor for ExtensionBridge {
             .ok_or_else(|| ExecutorError::Failed("session_begin returned no tab_id".into()))
     }
 
-    async fn call(&self, run_id: &str, tool: &str, mut params: Value) -> Result<ToolOutput, ExecutorError> {
+    async fn call(
+        &self,
+        run_id: &str,
+        tool: &str,
+        mut params: Value,
+    ) -> Result<ToolOutput, ExecutorError> {
         if let Some(obj) = params.as_object_mut() {
             obj.insert("run_id".into(), Value::String(run_id.to_string()));
         } else {
@@ -103,9 +121,14 @@ impl BrowserExecutor for ExtensionBridge {
             _ => Duration::from_secs(45),
         };
         let v = self
-            .call_raw(&format!("{}{}", methods::BROWSER_PREFIX, tool), params, timeout)
+            .call_raw(
+                &format!("{}{}", methods::BROWSER_PREFIX, tool),
+                params,
+                timeout,
+            )
             .await?;
-        serde_json::from_value(v).map_err(|e| ExecutorError::Failed(format!("bad tool output: {e}")))
+        serde_json::from_value(v)
+            .map_err(|e| ExecutorError::Failed(format!("bad tool output: {e}")))
     }
 
     async fn session_end(&self, run_id: &str, keep_tabs: bool) -> Result<(), ExecutorError> {
@@ -130,7 +153,10 @@ mod tests {
         let (stream, _remote2) = tokio::io::duplex(1024);
         let (second, _second_requests, _second_task) = passvalet_ipc::peer::spawn_peer(stream);
         let bridge = ExtensionBridge::default();
-        let hello = ExtHelloParams { extension_version: "test".into(), browser: "chrome".into() };
+        let hello = ExtHelloParams {
+            extension_version: "test".into(),
+            browser: "chrome".into(),
+        };
         assert!(!bridge.is_peer(first.id()));
         bridge.attach(first.clone(), hello.clone());
         assert!(bridge.is_peer(first.id()));

@@ -33,7 +33,9 @@ impl<R: Runtime> RpcHandler for IpcHandler<R> {
 
     fn on_disconnect(&self, peer_id: u64) {
         self.state.extension.detach_if(peer_id);
-        let _ = self.app.emit("extension:changed", self.state.extension.is_connected());
+        let _ = self
+            .app
+            .emit("extension:changed", self.state.extension.is_connected());
     }
 }
 
@@ -58,7 +60,9 @@ async fn dispatch<R: Runtime>(
         methods::GET_KEY => {
             let p: GetKeyParams = inbound.params()?;
             state.touch();
-            let value = state.with_vault(|v| v.read_key_for_session(&p.session_token, &p.service, &p.key_type))?;
+            let value = state.with_vault(|v| {
+                v.read_key_for_session(&p.session_token, &p.service, &p.key_type)
+            })?;
             let _ = app.emit("vault:changed", ());
             ok(GetKeyResult {
                 env_var: services::env_var_for(&p.service, &p.key_type),
@@ -99,8 +103,9 @@ async fn dispatch<R: Runtime>(
         }
         methods::START_COLLECTION => {
             let p: StartCollectionParams = inbound.params()?;
-            let run_id = crate::commands::start_collection_inner(app, state, p.service, p.key_types, vec![])
-                .map_err(|e| RpcError::app("collection_failed", e))?;
+            let run_id =
+                crate::commands::start_collection_inner(app, state, p.service, p.key_types, vec![])
+                    .map_err(|e| RpcError::app("collection_failed", e))?;
             ok(StartCollectionResult { run_id })
         }
         methods::EXT_HELLO => {
@@ -111,7 +116,10 @@ async fn dispatch<R: Runtime>(
         }
         methods::EXT_EVENT => {
             if !state.extension.is_peer(inbound.peer.id()) {
-                return Err(RpcError::app("not_extension", "events require the current extension connection"));
+                return Err(RpcError::app(
+                    "not_extension",
+                    "events require the current extension connection",
+                ));
             }
             let ev: ExtEvent = inbound.params()?;
             if let ExtEvent::UserAborted { run_id } = &ev {
@@ -122,20 +130,33 @@ async fn dispatch<R: Runtime>(
         }
         // Debug builds only, for end-to-end tests: approve/deny the oldest pending prompt.
         "dev.decide" if crate::unlock::dev_skip_presence() => {
-            let approve = inbound.params.get("approve").and_then(|v| v.as_bool()).unwrap_or(true);
+            let approve = inbound
+                .params
+                .get("approve")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(true);
             let Some(p) = state.prompts.list().into_iter().next() else {
                 return Err(RpcError::app("no_prompt", "no pending prompt"));
             };
-            let decision = if approve { Decision::Approved } else { Decision::Denied };
+            let decision = if approve {
+                Decision::Approved
+            } else {
+                Decision::Denied
+            };
             state.prompts.resolve(&p.id, decision);
             prompt::close_prompt_window_if_idle(app, &state.prompts);
             ok(serde_json::json!({ "id": p.id, "approved": approve }))
         }
         "dev.setup" if crate::unlock::dev_skip_presence() => {
             let settings = state.settings();
-            let text = crate::unlock::setup(app, &state.vault, &settings, passvalet_core::model::UnlockProviderKind::TouchIdKeychain)
-                .await
-                .map_err(|e| RpcError::app("setup_failed", e.to_string()))?;
+            let text = crate::unlock::setup(
+                app,
+                &state.vault,
+                &settings,
+                passvalet_core::model::UnlockProviderKind::TouchIdKeychain,
+            )
+            .await
+            .map_err(|e| RpcError::app("setup_failed", e.to_string()))?;
             ok(serde_json::json!({ "recovery_key": text }))
         }
         "dev.unlock" if crate::unlock::dev_skip_presence() => {
@@ -171,7 +192,14 @@ async fn request_permissions<R: Runtime>(
             "PassValet vault is not set up yet; the user must finish onboarding in the app",
         ));
     }
-    let decision = ask_user(app, state, PromptKind::Authorize, &p.manifest, p.wait_seconds.unwrap_or(120).min(600)).await?;
+    let decision = ask_user(
+        app,
+        state,
+        PromptKind::Authorize,
+        &p.manifest,
+        p.wait_seconds.unwrap_or(120).min(600),
+    )
+    .await?;
     match decision {
         Decision::Approved => {}
         Decision::Denied => {
@@ -187,7 +215,11 @@ async fn request_permissions<R: Runtime>(
     let missing = session
         .grants
         .iter()
-        .filter(|g| !state.with_vault(|v| v.has_secret(&g.service, &g.key_type)).unwrap_or(false))
+        .filter(|g| {
+            !state
+                .with_vault(|v| v.has_secret(&g.service, &g.key_type))
+                .unwrap_or(false)
+        })
         .map(|g| MissingKey {
             service: g.service.clone(),
             key_type: g.key_type.clone(),
@@ -210,9 +242,8 @@ async fn ask_user<R: Runtime>(
     m: &PermissionManifest,
     wait_seconds: u64,
 ) -> Result<Decision, RpcError> {
-    let summary = state.with_vault(|v| {
-        manifest::summarize(m, |s, k| v.has_secret(s, k).unwrap_or(false))
-    });
+    let summary =
+        state.with_vault(|v| manifest::summarize(m, |s, k| v.has_secret(s, k).unwrap_or(false)));
     let locked = state.with_vault(|v| v.is_locked());
     let id = uuid::Uuid::new_v4().to_string();
     let rx = state.prompts.push(PendingPrompt {
@@ -260,7 +291,11 @@ async fn report_key_invalid<R: Runtime>(
             Some(&p.service),
             Some(&p.key_type),
             Some(&session.id),
-            Some(&format!("{:?} {}", p.status_code, p.message.clone().unwrap_or_default())),
+            Some(&format!(
+                "{:?} {}",
+                p.status_code,
+                p.message.clone().unwrap_or_default()
+            )),
         )
     })?;
 
@@ -274,7 +309,10 @@ async fn report_key_invalid<R: Runtime>(
             outcome: RotationOutcome::Unsupported,
             value: None,
             env_var: None,
-            message: Some(format!("no rotation playbook for {}/{}", p.service, p.key_type)),
+            message: Some(format!(
+                "no rotation playbook for {}/{}",
+                p.service, p.key_type
+            )),
         });
     }
 
@@ -286,7 +324,9 @@ async fn report_key_invalid<R: Runtime>(
             session.agent.name,
             services::service_label(&p.service),
             services::key_label(&p.service, &p.key_type),
-            p.status_code.map(|c| c.to_string()).unwrap_or_else(|| "未知状态".into())
+            p.status_code
+                .map(|c| c.to_string())
+                .unwrap_or_else(|| "未知状态".into())
         ),
         requests: vec![passvalet_core::model::KeyRequest {
             service: p.service.clone(),
@@ -322,7 +362,10 @@ async fn report_key_invalid<R: Runtime>(
     // Hints: fingerprint of the old key helps the agent identify it.
     let mut hints = vec![];
     if let Ok(Some(meta)) = state.with_vault(|v| v.get_secret_meta(&p.service, &p.key_type)) {
-        hints.push(format!("The OLD key preview is {} (first/last 4 chars).", meta.fingerprint));
+        hints.push(format!(
+            "The OLD key preview is {} (first/last 4 chars).",
+            meta.fingerprint
+        ));
         if let Some(l) = meta.label {
             hints.push(format!("The OLD key is named \"{l}\" in the dashboard."));
         }
@@ -363,7 +406,9 @@ async fn report_key_invalid<R: Runtime>(
     };
     match outcome {
         RunOutcome::Success { .. } | RunOutcome::Partial { .. } => {
-            let value = state.with_vault(|v| v.read_key_for_session(&p.session_token, &p.service, &p.key_type))?;
+            let value = state.with_vault(|v| {
+                v.read_key_for_session(&p.session_token, &p.service, &p.key_type)
+            })?;
             let _ = app.emit("vault:changed", ());
             Ok(ReportKeyInvalidResult {
                 outcome: RotationOutcome::Rotated,

@@ -37,8 +37,15 @@ pub struct RunRequest {
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RunEvent {
-    Started { run_id: String, service: String, model: String },
-    Thought { run_id: String, text: String },
+    Started {
+        run_id: String,
+        service: String,
+        model: String,
+    },
+    Thought {
+        run_id: String,
+        text: String,
+    },
     Step {
         run_id: String,
         step: u32,
@@ -53,18 +60,37 @@ pub enum RunEvent {
         fingerprint: String,
         valid: bool,
     },
-    Escalated { run_id: String, from: String, to: String },
-    NeedUser { run_id: String, message: String },
-    Finished { run_id: String, outcome: RunOutcome },
+    Escalated {
+        run_id: String,
+        from: String,
+        to: String,
+    },
+    NeedUser {
+        run_id: String,
+        message: String,
+    },
+    Finished {
+        run_id: String,
+        outcome: RunOutcome,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[cfg_attr(feature = "ts", derive(ts_rs::TS), ts(export))]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum RunOutcome {
-    Success { captured: Vec<String>, summary: String },
-    Partial { captured: Vec<String>, missing: Vec<String>, reason: String },
-    Failed { reason: String },
+    Success {
+        captured: Vec<String>,
+        summary: String,
+    },
+    Partial {
+        captured: Vec<String>,
+        missing: Vec<String>,
+        reason: String,
+    },
+    Failed {
+        reason: String,
+    },
     Aborted,
 }
 
@@ -185,7 +211,10 @@ impl Runner {
     pub async fn run(mut self, req: RunRequest) -> RunOutcome {
         let outcome = self.run_inner(&req).await;
         // Destroy everything on the extension side regardless of outcome.
-        let keep_tabs = matches!(outcome, RunOutcome::Failed { .. } | RunOutcome::Partial { .. });
+        let keep_tabs = matches!(
+            outcome,
+            RunOutcome::Failed { .. } | RunOutcome::Partial { .. }
+        );
         if let Err(e) = self.executor.session_end(&req.run_id, keep_tabs).await {
             tracing::warn!("session_end failed: {e}");
         }
@@ -220,7 +249,11 @@ impl Runner {
         })
         .await;
 
-        let tab = match self.executor.session_begin(&run_id, &req.playbook.start_url).await {
+        let tab = match self
+            .executor
+            .session_begin(&run_id, &req.playbook.start_url)
+            .await
+        {
             Ok(t) => t,
             Err(ExecutorError::Aborted) => return RunOutcome::Aborted,
             Err(e) => {
@@ -245,7 +278,11 @@ impl Runner {
                 return RunOutcome::Aborted;
             }
             if step >= max_steps {
-                return self.partial(&captured, &wanted, format!("step budget ({max_steps}) exhausted"));
+                return self.partial(
+                    &captured,
+                    &wanted,
+                    format!("step budget ({max_steps}) exhausted"),
+                );
             }
 
             let creq = CompletionRequest {
@@ -303,7 +340,10 @@ impl Runner {
                 continue;
             }
             idle_rounds = 0;
-            messages.push(Message::assistant(resp.text.clone(), resp.tool_calls.clone()));
+            messages.push(Message::assistant(
+                resp.text.clone(),
+                resp.tool_calls.clone(),
+            ));
 
             let mut results: Vec<ToolResult> = Vec::new();
             let mut step_had_error = false;
@@ -311,7 +351,11 @@ impl Runner {
 
             for tc in &resp.tool_calls {
                 if step >= max_steps {
-                    return self.partial(&captured, &wanted, format!("step budget ({max_steps}) exhausted"));
+                    return self.partial(
+                        &captured,
+                        &wanted,
+                        format!("step budget ({max_steps}) exhausted"),
+                    );
                 }
                 step += 1;
                 if self.control.is_aborted() {
@@ -322,8 +366,11 @@ impl Runner {
                 match tc.name.as_str() {
                     tools::DONE => {
                         let summary = tc.arguments["summary"].as_str().unwrap_or("").to_string();
-                        let missing: Vec<String> =
-                            wanted.iter().filter(|k| !captured.contains(k)).cloned().collect();
+                        let missing: Vec<String> = wanted
+                            .iter()
+                            .filter(|k| !captured.contains(k))
+                            .cloned()
+                            .collect();
                         terminal = Some(if missing.is_empty() {
                             RunOutcome::Success {
                                 captured: captured.clone(),
@@ -376,7 +423,8 @@ impl Runner {
                             call_id: tc.id.clone(),
                             name: tc.name.clone(),
                             content: vec![ContentPart::Text(
-                                "The user has completed the step. Re-read the page and continue.".into(),
+                                "The user has completed the step. Re-read the page and continue."
+                                    .into(),
                             )],
                             is_error: false,
                         });
@@ -385,12 +433,17 @@ impl Runner {
                         let key_type = tc.arguments["key_type"].as_str().unwrap_or("").to_string();
                         let label = tc.arguments["label"].as_str().map(|s| s.to_string());
                         let out = if wanted.contains(&key_type) {
-                            self.executor.call(&run_id, "capture_secret", tc.arguments.clone()).await
+                            self.executor
+                                .call(&run_id, "capture_secret", tc.arguments.clone())
+                                .await
                         } else {
                             Ok(ToolOutput::error("key_type is not part of this request"))
                         };
                         let (text, is_error) = match out {
-                            Ok(ToolOutput { secret: Some(value), .. }) if !value.trim().is_empty() => {
+                            Ok(ToolOutput {
+                                secret: Some(value),
+                                ..
+                            }) if !value.trim().is_empty() => {
                                 let value = value.trim().to_string();
                                 match self
                                     .sink
@@ -455,12 +508,18 @@ impl Runner {
                         });
                     }
                     name if tools::is_browser_tool(name) => {
-                        let out = self.executor.call(&run_id, name, tc.arguments.clone()).await;
+                        let out = self
+                            .executor
+                            .call(&run_id, name, tc.arguments.clone())
+                            .await;
                         let (content, text, is_error) = match out {
                             Ok(o) => {
                                 let mut text = o.text;
                                 if let Some(bs) = &o.browser_state {
-                                    text.push_str(&format!("\n[tab {} · {} · {}]", bs.tab_id, bs.title, bs.url));
+                                    text.push_str(&format!(
+                                        "\n[tab {} · {} · {}]",
+                                        bs.tab_id, bs.title, bs.url
+                                    ));
                                 }
                                 let text = redact::redact(&text);
                                 // Browser images have not been redacted. Never forward them, even
@@ -531,7 +590,11 @@ impl Runner {
     }
 
     fn partial(&self, captured: &[String], wanted: &[String], reason: String) -> RunOutcome {
-        let missing: Vec<String> = wanted.iter().filter(|k| !captured.contains(k)).cloned().collect();
+        let missing: Vec<String> = wanted
+            .iter()
+            .filter(|k| !captured.contains(k))
+            .cloned()
+            .collect();
         if captured.is_empty() {
             RunOutcome::Failed { reason }
         } else {
@@ -571,7 +634,9 @@ fn prune_images(messages: &mut [Message], keep: usize) {
                 _ => true,
             });
             if r.content.is_empty() {
-                r.content.push(ContentPart::Text("(screenshot removed to save context)".into()));
+                r.content.push(ContentPart::Text(
+                    "(screenshot removed to save context)".into(),
+                ));
             }
         }
         m.content.retain(|c| match c {
