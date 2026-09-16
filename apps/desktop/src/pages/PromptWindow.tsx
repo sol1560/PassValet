@@ -62,7 +62,7 @@ export function PromptCard({ prompt, onDone, compact }: { prompt: PendingPrompt;
         {s.lines.map((l) => (
           <div className="line" key={l.service + l.key_type}>
             <span className="svc">{l.service_label}</span>
-            <span className="grow">{l.key_label}</span>
+            <span className="grow">{l.key_label}{l.reason && <small className="muted" style={{ display: "block" }}>{l.reason}</small>}</span>
             <span className="tag">{l.access === "read" ? "只读" : "读写"}</span>
             {!l.available && !isRotate && <span className="tag warn">保险库中没有</span>}
           </div>
@@ -78,7 +78,7 @@ export function PromptCard({ prompt, onDone, compact }: { prompt: PendingPrompt;
         <div className="notice warn">部分 key 尚未录入，批准后 agent 会拿到「不存在」的错误，需先在「密钥 / 自动采集」里添加。</div>
       )}
       <div className="muted" style={{ fontSize: 12 }}>
-        授权时长 {s.ttl_label}{prompt.vault_locked ? " · 批准时会先解锁保险库" : ""}
+        授权时长 {s.ttl_label}（{s.ttl_seconds} 秒）{prompt.vault_locked ? " · 批准时会先解锁保险库" : ""}
       </div>
       {err && <div className="error">{err}</div>}
       <div className="actions">

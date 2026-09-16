@@ -60,7 +60,7 @@ export default function Setup({ onDone }: { onDone: () => void }) {
     <div className="center">
       <div className="onboard col">
         <div className="row" style={{ gap: 10 }}>
-          <div className="logo" style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#4f46e5,#8b5cf6)" }} />
+          <div className="logo" aria-hidden="true">⚿</div>
           <div>
             <h1>欢迎使用 PassValet</h1>
             <p className="muted" style={{ margin: 0 }}>给 vibe coder 和 AI agent 的密钥管家。密钥只存在这台设备上，加密后落盘。</p>

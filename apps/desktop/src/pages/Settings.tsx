@@ -55,8 +55,8 @@ export default function SettingsPage({ info, onChanged }: { info: VaultInfo; onC
   };
 
   return (
-    <div>
-      <div className="page-head"><div><h1>设置</h1></div></div>
+    <div className="settings-page">
+      <div className="page-head"><div><h1>设置</h1><p className="muted">管理本机连接、自动采集和保险库安全。</p></div></div>
 
       <div className="card col">
         <h2>模型（用于自动采集）</h2>
@@ -121,12 +121,12 @@ export default function SettingsPage({ info, onChanged }: { info: VaultInfo; onC
 
       <div className="card col">
         <h2>安全</h2>
-        <div className="grid2">
-          <div className="field">
+        <div className="settings-rows">
+          <div className="field setting-row">
             <label>空闲自动锁定（分钟，0 = 不锁）</label>
             <input type="number" min={0} value={s.auto_lock_minutes} onChange={(e) => setS({ ...s, auto_lock_minutes: Number(e.target.value) })} onBlur={() => save({ auto_lock_minutes: s.auto_lock_minutes })} />
           </div>
-          <div className="field">
+          <div className="field setting-row">
             <label>每次授权都要求 Touch ID / Passkey</label>
             <label className="row" style={{ gap: 8, padding: "8px 0" }}>
               <input type="checkbox" style={{ width: "auto" }} checked={s.presence_on_approve} onChange={(e) => save({ presence_on_approve: e.target.checked })} />
@@ -147,12 +147,12 @@ export default function SettingsPage({ info, onChanged }: { info: VaultInfo; onC
             <button className="ghost small" onClick={() => setRecovery(null)}>我已保存</button>
           </div>
         )}
-        <div className="grid2">
-          <div className="field">
+        <div className="settings-rows">
+          <div className="field setting-row">
             <label>Passkey relying party 域名</label>
             <input value={s.passkey_domain} onChange={(e) => setS({ ...s, passkey_domain: e.target.value })} onBlur={() => save({ passkey_domain: s.passkey_domain })} />
           </div>
-          <div className="field">
+          <div className="field setting-row">
             <label>Passkey 用户名</label>
             <input value={s.passkey_username} onChange={(e) => setS({ ...s, passkey_username: e.target.value })} onBlur={() => save({ passkey_username: s.passkey_username })} />
           </div>

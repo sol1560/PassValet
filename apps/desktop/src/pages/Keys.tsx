@@ -18,21 +18,28 @@ export default function Keys({ info, onChanged }: { info: VaultInfo; onChanged: 
   const [revealed, setRevealed] = useState<Record<string, string>>({});
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [recoveryKey, setRecoveryKey] = useState("");
+  const [search, setSearch] = useState("");
+  const [menu, setMenu] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<SecretMeta | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const load = () => {
     api.listSecrets().then(setSecrets).catch((e) => toast(errorText(e), true));
     api.listServices().then(setServices).catch(() => {});
   };
   useEffect(load, [info.secret_count, info.locked]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (info.locked) { setRevealed({}); setAdding(false); } }, [info.locked]);
 
   const grouped = useMemo(() => {
     const m = new Map<string, SecretMeta[]>();
     for (const s of secrets) {
       if (s.service === "passvalet") continue;
+      const svc = services.find((v) => v.id === s.service);
+      if (!`${s.service} ${svc?.label ?? ""} ${s.key_type} ${svc?.key_types.find((k) => k.id === s.key_type)?.label ?? ""} ${s.label ?? ""}`.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())) continue;
       m.set(s.service, [...(m.get(s.service) ?? []), s]);
     }
     return [...m.entries()];
-  }, [secrets]);
+  }, [secrets, services, search]);
 
   const labelOf = (service: string) => services.find((s) => s.id === service)?.label ?? service;
   const keyLabel = (service: string, kt: string) =>
@@ -56,20 +63,23 @@ export default function Keys({ info, onChanged }: { info: VaultInfo; onChanged: 
     try {
       const v = await api.revealSecret(s.service, s.key_type);
       await navigator.clipboard.writeText(v);
-      toast("已复制到剪贴板（20 秒后请留意清除）");
+      toast("已复制到剪贴板，用完后请清除。");
     } catch (e) {
       toast(errorText(e), true);
     }
   }
 
   async function remove(s: SecretMeta) {
-    if (!confirm(`删除 ${labelOf(s.service)} / ${keyLabel(s.service, s.key_type)}？此操作不可恢复。`)) return;
+    setDeleteBusy(true);
     try {
       await api.deleteSecret(s.id);
+      setDeleting(null);
       onChanged();
       load();
     } catch (e) {
       toast(errorText(e), true);
+    } finally {
+      setDeleteBusy(false);
     }
   }
 
@@ -109,54 +119,67 @@ export default function Keys({ info, onChanged }: { info: VaultInfo; onChanged: 
 
   return (
     <div>
+      {deleting && <dialog className="delete-dialog" aria-labelledby="delete-title" ref={(node) => { if (node && !node.open) node.showModal(); }} onCancel={() => setDeleting(null)}>
+        <h2 id="delete-title">删除这个密钥？</h2>
+        <p>{labelOf(deleting.service)} · {keyLabel(deleting.service, deleting.key_type)}</p>
+        <p className="muted">此操作不可恢复，依赖它的 Agent 将无法再读取。</p>
+        <div className="actions"><button autoFocus disabled={deleteBusy} onClick={() => setDeleting(null)}>取消</button><button className="danger" disabled={deleteBusy} onClick={() => remove(deleting)}>{deleteBusy ? "删除中…" : "确认删除"}</button></div>
+      </dialog>}
       <div className="page-head">
         <div>
           <h1>密钥</h1>
           <p className="muted" style={{ margin: 0 }}>{secrets.filter((s) => s.service !== "passvalet").length} 个密钥，全部加密存储在本机。</p>
         </div>
         <div className="row">
-          <button onClick={() => setAdding(true)}>手动添加</button>
+          <button className="primary" onClick={() => setAdding(true)}>＋ 添加密钥</button>
         </div>
       </div>
 
       {adding && <AddForm services={services} onClose={() => setAdding(false)} onAdded={() => { setAdding(false); onChanged(); load(); }} />}
+      <input className="key-search" aria-label="搜索服务或密钥" placeholder="搜索服务、密钥类型或备注" value={search} onChange={(e) => setSearch(e.target.value)} />
 
       {grouped.length === 0 && !adding && (
         <div className="card col">
-          <h2>还没有密钥</h2>
-          <p className="muted">两种方式：手动粘贴已有的 key，或去「自动采集」让 PassValet 在你的浏览器里打开 Supabase / Stripe / OpenAI 等控制台把 key 抓回来。</p>
+          <h2>{search.trim() ? "没有找到匹配的密钥" : "还没有密钥"}</h2>
+          <p className="muted">{search.trim() ? "试试其他服务名、类型或备注。" : "添加已有密钥，或前往「自动采集」从浏览器中的服务控制台采集。"}</p>
         </div>
       )}
 
-      {grouped.map(([service, items]) => (
-        <div className="card" key={service}>
+      <div className="service-grid">{grouped.map(([service, items]) => (
+        <div className="card service-card" key={service}>
           <div className="service-head">
+            <span className="service-icon" aria-hidden="true">{service === "supabase" ? "ϟ" : service === "vercel" ? "▲" : labelOf(service).slice(0, 2)}</span>
             <span className="name">{labelOf(service)}</span>
-            <span className="tag">{service}</span>
+            <span className="tag">{items.length} 个密钥</span>
           </div>
           <div className="list">
             {items.map((s) => (
               <div className="list-item" key={s.id}>
                 <div className="grow">
-                  <div className="row">
+                  <div className="row wrap">
                     <strong>{keyLabel(s.service, s.key_type)}</strong>
                     <span className="tag">{s.key_type}</span>
                     <span className="tag">{SOURCE_LABEL[s.source]}</span>
                     {s.label && <span className="muted">{s.label}</span>}
                   </div>
                   <div className="fp" style={{ marginTop: 3 }}>
-                    {revealed[s.id] ? revealed[s.id] : s.fingerprint} · 更新于 {fmtTime(s.updated_at)}
+                    {revealed[s.id] ? revealed[s.id] : "••••••••••••"}
+                    <span className="updated">更新于 {fmtTime(s.updated_at)}</span>
                     {s.last_rotated_at && ` · 轮换于 ${fmtTime(s.last_rotated_at)}`}
                   </div>
                 </div>
-                <button className="small" onClick={() => reveal(s)}>{revealed[s.id] ? "隐藏" : "显示"}</button>
-                <button className="small" onClick={() => copy(s)}>复制</button>
-                <button className="small danger" onClick={() => remove(s)}>删除</button>
+                <div className="key-actions">
+                  <button className="small" onClick={() => reveal(s)}>{revealed[s.id] ? "隐藏" : "显示"}</button>
+                  <button className="small copy" onClick={() => copy(s)}>复制</button>
+                  <div className="more-wrap"><button className="small ghost" aria-label={`${labelOf(service)} ${keyLabel(service, s.key_type)} 更多操作`} aria-expanded={menu === s.id} onClick={() => setMenu(menu === s.id ? null : s.id)}>•••</button>
+                    {menu === s.id && <div className="more-menu"><button className="danger small" onClick={() => { setMenu(null); setDeleting(s); }}>删除密钥</button><button className="ghost small" onClick={() => setMenu(null)}>关闭菜单</button></div>}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </div>
-      ))}
+      ))}</div>
     </div>
   );
 }
