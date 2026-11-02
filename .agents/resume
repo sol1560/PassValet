@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# orb 启动和每次唤醒时运行。Amp 最多等 10 秒，这里只做快的事，不装依赖。
+set -euo pipefail
+
+# 用 Amp 注入的密钥生成 .env.local，给必须读文件的脚本用（见 .agents/amp-dotenv.sh）
+"$(dirname "${BASH_SOURCE[0]}")/amp-dotenv.sh" || echo "[resume] amp-dotenv 失败，继续启动" >&2
